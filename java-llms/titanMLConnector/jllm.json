@@ -1,0 +1,16 @@
+{
+    "id": "titan-ml-connector",
+    "meta" : {
+        "label": "TitanML Takeoff Server Connector"
+    },
+    "params": [
+        {
+            "name": "endpoint_url",
+            "label": "Endpoint URL",
+            "type": "STRING",
+            "description": "Assumes ':3000/generate' endpoint. Don't include :3000/generate at the end of this URL",
+            "mandatory": true
+        }        
+    ],
+    "clientClass": "com.titanml.llm.TitanMLLLMConnector"
+}
