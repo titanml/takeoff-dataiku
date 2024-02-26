@@ -1,5 +1,8 @@
 # Takeoff Dataiku Plugin
 
+See a video demo of the plugin in action
+[here](https://www.loom.com/share/9c24d2ed5ce94165b76834a068fafd66?sid=de7762cc-229e-4aa8-ad54-28476cb009ab)
+
 ## Example: using the Dataiku Takeoff plugin to describe images
 
 In this example, we'll setup a simple workflow to demonstrate using takeoff
