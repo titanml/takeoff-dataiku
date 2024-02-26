@@ -109,7 +109,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         return ret;
     }
 
-    private static JsonObject getGenerationJsonObject(CompletionQuery completionQuery) {
+    private JsonObject getGenerationJsonObject(CompletionQuery completionQuery) {
         // Make a TitanML compatible json POST object from a dataiku
         // completionQuery
         // Combine all the messages we've seen so far (dataiku uses a chat
@@ -129,12 +129,18 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         JsonArray prompts = new JsonArray(1);
 
         // Build the payload
+        // Get the consumer group from the connection settings
         prompts.add(completePrompt);
         jsonObject.add("text", prompts);
 
-        // Set the generator consumerGroup
-        JsonPrimitive consumerGroup = new JsonPrimitive("generator");
-        jsonObject.add("consumer_group", consumerGroup);
+        String consumerGroup =
+                resolvedSettings.config.get("consumer_group").getAsString();
+
+        if (consumerGroup != null) {
+            // Add the consumer group to the body
+            jsonObject.add("consumer_group", new JsonPrimitive(consumerGroup));
+
+        }
 
         if (completionSettings.temperature != null) {
             JsonElement temperature =
@@ -225,9 +231,14 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         prompts.add(prompt);
         jsonObject.add("text", prompts);
 
-        // Set the generator consumerGroup
-        JsonPrimitive consumerGroup = new JsonPrimitive("embedder");
-        jsonObject.add("consumer_group", consumerGroup);
+        // Get the consumer group from the connection settings
+        String consumerGroup =
+                resolvedSettings.config.get("consumer_group").getAsString();
+
+        if (consumerGroup != null) {
+            // Add the consumer group to the body
+            jsonObject.add("consumer_group", new JsonPrimitive(consumerGroup));
+        }
 
         return jsonObject;
     }
