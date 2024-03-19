@@ -156,20 +156,19 @@ model to perform, including any extra system prompt information you'd like
 to feed to the model.
 ![img_1.png](docs-images/image-to-text-setup-1.png)
 ![img.png](docs-images/image-to-text-setup-2.png)
-::: Note
 
+
+
+> [!NOTE]
 Image to text is supported only for remote urls (in dataiku) for the moment. A
-text field
-in your input should contain a URL pointing to an image to which your takeoff
-instance has access - for
-example: `https://fastly.picsum.photos/id/622/200/300.jpg?hmac=HR8-4uUEihkyJx4VczHLFhVvELy7KCD1jm16BABaDy8`
+text field in your input should contain a URL pointing to an image to which your takeoff
+instance has access - for example: `https://fastly.picsum.photos/id/622/200/300.jpg?hmac=HR8-4uUEihkyJx4VczHLFhVvELy7KCD1jm16BABaDy8`
 
 ## Back to the dashboard
 
 Click the run button on the LLM connection you've just built. It should
 begin to create image descriptions of each of the images in your dataset.
 ![img.png](docs-images/image-generation-run.png)
-:::
 
 # Contributing
 
