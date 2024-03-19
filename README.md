@@ -3,6 +3,11 @@
 See a video demo of the plugin in action
 [here](https://www.loom.com/share/9c24d2ed5ce94165b76834a068fafd66?sid=de7762cc-229e-4aa8-ad54-28476cb009ab)
 
+
+## Building
+
+A makefile is provided to build the plugin. This requires you have [ant](https://docs.jboss.org/jbossas/docs/Getting_Started_Guide/beta422/html/About_the_Example_Applications-Install_Ant.html) installed and on your `PATH`, and have your DSS install directory as the environment variable `DATAIKU_INSTALL`.
+
 ## Example: using the Dataiku Takeoff plugin to describe images
 
 In this example, we'll setup a simple workflow to demonstrate using takeoff
@@ -98,6 +103,11 @@ That container should boot up, running all three models in tandem.
 
 ## Using the plugin in a Dataiku workflow
 
+
+> [!NOTE]
+You'll need > v12.0 of DSS to use the Takeoff plugin. Note that the default linux install is for V11 instead.
+
+
 To use the plugin in Dataiku, you must first have the administrator enable
 the LLM that the plugin provides. To do this as an administrator, go to the
 `Administrator` page in the dropdown on the top right, and then go to the
@@ -187,26 +197,31 @@ field, add:
 see [here](https://www.jetbrains.com/help/idea/ant.html)).
 
 ```
--Denv.DKUINSTALLDIR=/path/to/dataiku/kit
+ -Denv.DKUINSTALLDIR=<path/to/dataiku-dss-xx.x.x>
 ```
 
-(on the ant command line, this can be specified as an environment variable.
-`DKUINSTALLDIR=/path/to/dataiku/kit ant ...`)
-
-For example, on my Mac with the dataiku free edition:
+For example, on a Mac with the dataiku free edition:
 
 ```
 DKUINSTALLDIR=/Users/fergusbarratt/Library/DataScienceStudio/kits/dataiku-dss
 -12.5.1-osx/
 ```
 
+Or on linux with a newer version:
+```shell
+DKUINSTALLDIR=/home/titan-m0/dataiku-dss-12.5.2
+```
+
 To give intellij access to the various Dataiku packages, navigate to the
 IntelliJ Project Structure modal (`File->Project Structure`, or `CMD-;`). On
 this
 page
-click the plus icon, and add the folders under the `/lib/` and `/dist` paths
+click the plus icon, and add the `/lib/`, `/dist` and `/lib/shadelib` folders
 in the `DKUINSTALLDIR` above.
 ![add-packages](docs-images/add-packages.png)
+
+You'll also need to install `gson` from maven (Press + -> From Maven -> Search for gson). 
+An example of what your .idea folder should now look like is available in example_idea.md.
 
 This should be enough to get IntelliJ setup to develop the Dataiku plugin.
 To build the package, in the ant sidebar, click the play icon with the `jar`
@@ -217,11 +232,19 @@ A compiler window should appear.
 ## Installing the plugin into Dataiku
 
 To use the plugin in Dataiku, it should be installed as a plugin in the
-Plugins page. If you develop it in the dataiku dev folder, for me here:
+Plugins page. If you develop it in the dataiku dev folder, for OSX that'll look something like:
 
 ```
 /Users/fergusbarratt/Library/DataScienceStudio/dss_home/plugins/dev/titan-ml-connector
 ```
+
+Or an example for linux:
+```shell
+/home/titan-0/takeoff-dataiku/titan-ml-connector
+
+```
+
+Alternatively, you can just make symlink from your development environment to the plugins/dev folder.
 
 Then you can make it a development plugin. To make your changes available to
 any workflows that use the plugin, you have to recompile the java binary
