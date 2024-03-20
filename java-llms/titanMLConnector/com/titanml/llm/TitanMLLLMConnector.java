@@ -15,10 +15,6 @@ import com.dataiku.dip.llm.utils.OnlineLLMUtils;
 import com.dataiku.dip.resourceusage.ComputeResourceUsage;
 import com.dataiku.dip.resourceusage.ComputeResourceUsage.LLMUsageType;
 import com.dataiku.dip.utils.DKULogger;
-import com.dataiku.dss.shadelib.org.apache.http.client.methods.HttpDelete;
-import com.dataiku.dss.shadelib.org.apache.http.client.methods.HttpGet;
-import com.dataiku.dss.shadelib.org.apache.http.client.methods.HttpPost;
-import com.dataiku.dss.shadelib.org.apache.http.client.methods.HttpPut;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.HttpClientBuilder;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.LaxRedirectStrategy;
 import com.google.gson.JsonArray;
@@ -30,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 public class TitanMLLLMConnector extends CustomLLMClient {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
@@ -44,36 +41,12 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
-        client = new ExternalJSONAPIClient(endpointUrl, null, true, null) {
-            @Override
-            protected HttpGet newGet(String path) {
-                return new HttpGet(baseURI + path);
-            }
-
-            @Override
-            protected HttpPost newPost(String path) {
-                return new HttpPost(baseURI + path);
-            }
-
-            @Override
-            protected HttpPut newPut(String path) {
-                throw new IllegalArgumentException("unimplemented");
-            }
-
-            @Override
-            protected HttpDelete newDelete(String path) {
-                throw new IllegalArgumentException("unimplemented");
-            }
-
-            @Override
-            protected void customizeBuilder(HttpClientBuilder builder) {
-                builder.setRedirectStrategy(new LaxRedirectStrategy());
-                HTTPBasedLLMNetworkSettings networkSettings = new HTTPBasedLLMNetworkSettings();
-                OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
-
-            }
+        Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
+            builder.setRedirectStrategy(new LaxRedirectStrategy());
+            HTTPBasedLLMNetworkSettings networkSettings = new HTTPBasedLLMNetworkSettings();
+            OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
-
+        client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
     }
 
     public int getMaxParallelism() {
@@ -90,7 +63,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             JsonObject jsonObject = getGenerationJsonObject(completionQuery);
 
             // Send the query
-            JsonObject response = client.postObjectToJSON(":3000/generate", JsonObject.class, jsonObject);
+            JsonObject response = client.postObjectToJSON("generate", JsonObject.class, jsonObject);
 
             // response should look like this:
             // {"text":["Something1","Something2"]}
@@ -176,7 +149,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             JsonObject jsonObject = getEmbeddingsJsonObject(embeddingQuery);
 
             // Send the query
-            JsonObject response = client.postObjectToJSON(":3000/embed",
+            JsonObject response = client.postObjectToJSON("embed",
                     JsonObject.class, jsonObject);
 
             // response should look like this:

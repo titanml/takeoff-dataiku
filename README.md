@@ -1,16 +1,24 @@
+<!-- Required extensions: pymdownx.betterem, pymdownx.tilde, pymdownx.emoji, pymdownx.tasklist, pymdownx.superfences -->
+
 # Takeoff Dataiku Plugin
 
 See a video demo of the plugin in action
 [here](https://www.loom.com/share/9c24d2ed5ce94165b76834a068fafd66?sid=de7762cc-229e-4aa8-ad54-28476cb009ab)
 
+
+## Building
+
+A makefile is provided to build the plugin. This requires you have [ant](https://docs.jboss.org/jbossas/docs/Getting_Started_Guide/beta422/html/About_the_Example_Applications-Install_Ant.html) installed and on your `PATH`, and have your DSS install directory as the environment variable `DATAIKU_INSTALL`.
+
 ## Example: using the Dataiku Takeoff plugin to describe images
 
 In this example, we'll setup a simple workflow to demonstrate using takeoff
-with dataiku to do some simple AI tasks.
+with dataiku to do some simple AI tasks. First we'll use an image-to-text model to describe some images - each of which contains a saying. We'll then use a text generation model to explain the sayings, and then use an embedding model to embed the sayings. Finally, we'll use a RAG workflow to select which of the embedded texts is being described by the explanation. You can also import a copy of the demo DSS project, available from `docs/demo.zip`.
+
 
 ## Importing a dataset
 
-First, we need a dataset. Here's one ChatGPT made earlier:
+First, we'll need a dataset. Here's one ChatGPT made earlier:
 
 ```csv
 text,imageUrl
@@ -22,13 +30,13 @@ text,imageUrl
 "Time flies like an arrow; fruit flies like a banana", "https://image-examples-llava.s3.amazonaws.com/images/time_banana.png"
 ```
 
-Save it in a file called `data.csv`. Then, from the dropdown menu in dataiku,
-upload the dataset:
-![img.png](docs-images/upload-dataset.png)
+Save it in a file called `data.csv`. Then, after creating a blank project in DSS, import it from the dropdown menu.
+
+![img.png](docs/upload-dataset.png)
 
 ## Setting up Takeoff
 
-We've got a dataset in dataiku. Before we setup the dataiku plugin, we need
+Before we setup the dataiku plugin, we need
 to setup the TitanML takeoff server to serve models and respond to requests.
 We're going to use the
 Takeoff [config](https://docs.titanml.co/docs/Docs/model_management/manifests)
@@ -98,40 +106,39 @@ That container should boot up, running all three models in tandem.
 
 ## Using the plugin in a Dataiku workflow
 
-To use the plugin in Dataiku, you must first have the administrator enable
+
+> [!NOTE]
+You'll need > v12.0 of DSS to use the Takeoff plugin. Note that the default linux install is for V11 instead.
+
+After you've installed the plugin (See [Installing the plugin into Dataiku](#installing-the-plugin-into-dataiku)
+if you're installing it as a developer), you'll need to have the administrator enable
 the LLM that the plugin provides. To do this as an administrator, go to the
 `Administrator` page in the dropdown on the top right, and then go to the
 connections page. Then add a `Custom LLM` connection.
 
-![img.png](docs-images/custom-llm-connection.png)
+![img.png](docs/connection-setup-info.png)
+
 
 In the configuration
 page, make sure to set the endpoint URL for the deployed takeoff instance,
-and to choose your plugin as the type.
-
-![img.png](docs-images/connection-setup-info.png)
+and to choose your plugin as the type. 
 
 The dataiku platform treats each model deployed in the Takeoff server as a
-separate Custom LLM connection. So to get this setup going, we need to setup
-3 Custom LLM connections, one for the embedding model, one for the
+model within the Custom LLM connection -  one for the embedding model, one for the
 generation model, and one for the image generation model. The different
 models are identified inside takeoff by
 their [consumer_group](https://docs.titanml.co/docs/Docs/model_management/readers):
 internally,
 takeoff will route all requests with a given `consumer_group` to the
-model that was deployed with that key.
+model that was deployed with that key. As such, connecting Takeoff with DSS is as simple as providing
+the endpoint on which Takeoff is hosted 
+(`http://localhost:3000` if you've been following these instructions), 
+and the consumer group of the specific model type. For image-to-text, select `Chat Completion` as the capability.
 
-It's that `consumer_group` key that we need to enter here. So, to setup the
-image generation model, enter `image-generator` (the consumer group from the
-takeoff config above) into the configuration page. Make sure the endpoint
-URL is set correctly, to a accessible URL from which the dataiku
-instance can reach your deployed models.
 
-Proceed to setup the `generator` and `embedder` models similarly. For the
-embedding model, the `Capability` field should instead be set to `Text
-embedding`.
+![img.png](docs/custom-llm-connection.png)
 
-Once you've finished this section - you should have setup 3 dataiku models for
+Once you've finished this section - you should have setup 3 dataiku models within a single connection, for
 use inside your Dataiku flows. On the takeoff side, you've deployed these
 three language models on the same machine, such that dataiku can address
 them all individually.
@@ -140,12 +147,12 @@ them all individually.
 
 Coming back to our dataset: we're going to build 3 LLM workflows that
 transform that dataset. First, image to text:
-![img.png](docs-images/image-to-text-highlight.png)
+![img.png](docs/image-to-text-highlight.png)
 To transform the images in our dataset using the takeoff connection, start
 by adding a new LLM 'Prompt' Recipe. This can be found in the sidebar:
-![img.png](docs-images/sidebar-highlight.png)
+![img.png](docs/sidebar-highlight.png)
 This icon:
-![img_1.png](docs-images/prompt-highlight.png)
+![img_1.png](docs/prompt-highlight.png)
 
 Inside the setup, choose the image generation LLM from the dropdown, and
 then choose the "Advanced Prompt" option. Add an image tag to the start of
@@ -154,22 +161,83 @@ where `{{imageUrl}}` is a placeholder for the actual URL pointing to the
 image. The rest of the prompt is a description of the task you'd like the
 model to perform, including any extra system prompt information you'd like
 to feed to the model.
-![img_1.png](docs-images/image-to-text-setup-1.png)
-![img.png](docs-images/image-to-text-setup-2.png)
-::: Note
+![img_1.png](docs/image-to-text-setup-1.png)
+![img.png](docs/img.png)
 
+
+
+> [!NOTE]
 Image to text is supported only for remote urls (in dataiku) for the moment. A
-text field
-in your input should contain a URL pointing to an image to which your takeoff
-instance has access - for
-example: `https://fastly.picsum.photos/id/622/200/300.jpg?hmac=HR8-4uUEihkyJx4VczHLFhVvELy7KCD1jm16BABaDy8`
+text field in your input should contain a URL pointing to an image to which your takeoff
+instance has access - for example: `https://fastly.picsum.photos/id/622/200/300.jpg?hmac=HR8-4uUEihkyJx4VczHLFhVvELy7KCD1jm16BABaDy8`
 
-## Back to the dashboard
 
 Click the run button on the LLM connection you've just built. It should
 begin to create image descriptions of each of the images in your dataset.
-![img.png](docs-images/image-generation-run.png)
-:::
+![img2.png](docs/img2.png)
+
+
+## Using these LLMs in a workflow: Generating text
+Next we'll generate summaries of the sayings in the dataset, using the generative model. 
+![img.png](docs/img3.png)
+
+Setup another prompt recipe as before, this time picking the generative model of the Custom LLM
+![img.png](docs/img4.png)
+![img.png](docs/img5.png)
+
+Running this should generate descriptions of the sayings:
+![img.png](docs/img6.png)
+## Using these LLMs in a workflow: Embedding text
+Next we'll embed each of the sayings into a vector database. 
+The setup for the embedder also creates the vector database which needs its own code env,
+which we'll setup first.
+
+Go to the administrator section (see instructions above for setting up a connection), then select the `Code Envs` tab and press `New Python Env`.
+
+Setup the environment to use a recent Python version available on your system (e.g. `3.10` on my system). 
+![img.png](docs/img6ish.png)
+
+The custom code environment is needed to import the vector database we're going to use. After the env has been created, select `Packages to install` in the left-hand navigation bar.
+
+As we're going to use the `FAISS` vector database via langchain, we'll need to request the following packages:
+```text
+langchain==0.1.0
+faiss-cpu
+pydantic==1.10.9
+```
+Select `save and update` after entering these to finish setting up your Code Env. If there's an issue with installing, you may have to play around with the selected versions (usually based on your version of Python).
+
+Returning to your flow, we can now use an embed recipe to create the embedder.
+![img.png](docs/img7.png)
+
+Note here that the Knowledge bank settings will need changing to use our newly setup code env.
+
+![img.png](docs/img8.png)
+
+Select edit -> Core Settings and then `Select an environment` for Code Env and set it to the newly created environment (e.g. `rag-env` in this example).
+
+![img.png](docs/img9.png)
+
+We'll also add RAG functionality to our LLM here; navigating back to the 'Use' page of the Knowledge bank settings, add an Augmented LLM which can make use of the embeddings in generating an output.
+
+![img.png](docs/img10.png)
+
+## Using these LLMs in a workflow: RAG workflows
+After running the embedder, we can now use this Augmented LLM to create a Rag workflow. Create a `Prompt` recipe, and then select the Retrieval Augmented LLM we just created.
+
+
+![img.png](docs/img11.png)
+
+![img.png](docs/img12.png)
+
+![img.png](docs/img13.png)
+
+
+## Running the whole flow
+
+You can now run the final generation recipe, and get as output what the model thinks each one was referring to, with some attempts at explaining why. Tweaking the models and parameters used will improve performance here, naturally.
+
+![img.png](docs/img14.png)
 
 # Contributing
 
@@ -188,41 +256,54 @@ field, add:
 see [here](https://www.jetbrains.com/help/idea/ant.html)).
 
 ```
--Denv.DKUINSTALLDIR=/path/to/dataiku/kit
+ -Denv.DKUINSTALLDIR=<path/to/dataiku-dss-xx.x.x>
 ```
 
-(on the ant command line, this can be specified as an environment variable.
-`DKUINSTALLDIR=/path/to/dataiku/kit ant ...`)
-
-For example, on my Mac with the dataiku free edition:
+For example, on a Mac with the dataiku free edition:
 
 ```
 DKUINSTALLDIR=/Users/fergusbarratt/Library/DataScienceStudio/kits/dataiku-dss
 -12.5.1-osx/
 ```
 
+Or on linux with a newer version:
+```shell
+DKUINSTALLDIR=/home/titan-m0/dataiku-dss-12.5.2
+```
+
 To give intellij access to the various Dataiku packages, navigate to the
 IntelliJ Project Structure modal (`File->Project Structure`, or `CMD-;`). On
 this
 page
-click the plus icon, and add the folders under the `/lib/` and `/dist` paths
+click the plus icon, and add the `/lib/`, `/dist` and `/lib/shadelib` folders
 in the `DKUINSTALLDIR` above.
-![add-packages](docs-images/add-packages.png)
+![add-packages](docs/add-packages.png)
+
+You'll also need to install `gson` from maven (Press + -> From Maven -> Search for gson). 
+An example of what your .idea folder should now look like is available in example_idea.md.
 
 This should be enough to get IntelliJ setup to develop the Dataiku plugin.
 To build the package, in the ant sidebar, click the play icon with the `jar`
 task highlighted.
-![ant-build](docs-images/ant-build.png)
+![ant-build](docs/ant-build.png)
 A compiler window should appear.
 
 ## Installing the plugin into Dataiku
 
 To use the plugin in Dataiku, it should be installed as a plugin in the
-Plugins page. If you develop it in the dataiku dev folder, for me here:
+Plugins page. If you develop it in the dataiku dev folder, for OSX that'll look something like:
 
 ```
 /Users/fergusbarratt/Library/DataScienceStudio/dss_home/plugins/dev/titan-ml-connector
 ```
+
+Or an example for linux:
+```shell
+/home/titan-0/takeoff-dataiku/titan-ml-connector
+
+```
+
+Alternatively, you can just make symlink from your development environment to the plugins/dev folder.
 
 Then you can make it a development plugin. To make your changes available to
 any workflows that use the plugin, you have to recompile the java binary
