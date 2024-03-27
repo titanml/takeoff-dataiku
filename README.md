@@ -8,7 +8,7 @@ See a video demo of the plugin in action
 
 ## Building
 
-A makefile is provided to build the plugin. This requires you have [ant](https://docs.jboss.org/jbossas/docs/Getting_Started_Guide/beta422/html/About_the_Example_Applications-Install_Ant.html) installed and on your `PATH`, and have your DSS install directory as the environment variable `DATAIKU_INSTALL`.
+A makefile is provided to build the plugin. This requires you have [ant](https://docs.jboss.org/jbossas/docs/Getting_Started_Guide/beta422/html/About_the_Example_Applications-Install_Ant.html) installed and on your `PATH`, and have your DSS install directory as the environment variable `DKUINSTALLDIR`.
 
 ## Example: using the Dataiku Takeoff plugin to describe images
 
@@ -56,9 +56,6 @@ takeoff:
     enable_metrics: true
     heartbeat_check_interval: 5
     launch_management_server: true
-    launch_vertex_server: false
-    launch_sagemaker_server: false
-    launch_openai_server: false
     management_port: 3001
     vertex_port: 3002
     openai_port: 3003
@@ -99,7 +96,7 @@ docker run --gpus all \
     -p 3001:3001 \
     -v ~/.model_cache:/code/models \
     -v ./config.yaml:/code/config.yaml \
-    tytn/takeoff-pro:0.12.0-gpu
+    tytn/takeoff-pro:0.13.2-gpu
 ```
 
 That container should boot up, running all three models in tandem.
@@ -108,7 +105,7 @@ That container should boot up, running all three models in tandem.
 
 
 > [!NOTE]
-You'll need > v12.0 of DSS to use the Takeoff plugin. Note that the default linux install is for V11 instead.
+You'll need >= v12.5.2 of DSS to use the Takeoff plugin. Note that the default linux install is for V11 instead.
 
 After you've installed the plugin (See [Installing the plugin into Dataiku](#installing-the-plugin-into-dataiku)
 if you're installing it as a developer), you'll need to have the administrator enable

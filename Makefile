@@ -2,12 +2,12 @@ PLUGIN_ID=`cat plugin.json | python -c "import sys, json; print(str(json.load(sy
 PLUGIN_VERSION=`cat plugin.json | python -c "import sys, json; print(str(json.load(sys.stdin)['version']).replace('/',''))"`
 
 build-plugin:
-	ant -f build.xml -Denv.DKUINSTALLDIR=${DATAIKU_INSTALL}
+	ant -f build.xml -Denv.DKUINSTALLDIR=${DKUINSTALLDIR}
 	@cat plugin.json|json_pp > /dev/null
 
 zip-plugin:
 	@rm -rf dist
 	@mkdir dist
-	@zip -r dist/dss-plugin-${PLUGIN_ID}-${PLUGIN_VERSION}.zip plugin.json java-lib
+	@zip -r dist/dss-plugin-${PLUGIN_ID}-${PLUGIN_VERSION}.zip plugin.json java-lib java-llms
 
 plugin: build-plugin zip-plugin
