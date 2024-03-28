@@ -65,16 +65,19 @@ takeoff:
       device: cuda
       consumer_group: image-generator
       max_seq_length: 512
+      cuda_visible_devices: 0
       max_batch_size: 4
     reader2:
       model_name: TheBloke/Llama-2-7B-Chat-AWQ
       device: cuda
       max_seq_length: 512
       consumer_group: generator
+      cuda_visible_devices: 1
       max_batch_size: 4
     reader3:
       model_name: "BAAI/bge-small-en"
       device: cuda
+      cuda_visible_devices: 0
       consumer_group: embedder 
 ```
 
