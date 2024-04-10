@@ -72,7 +72,7 @@ takeoff:
       device: cuda
       max_seq_length: 512
       consumer_group: generator
-      cuda_visible_devices: 1
+      cuda_visible_devices: 0
       max_batch_size: 4
     reader3:
       model_name: "BAAI/bge-small-en"
@@ -80,25 +80,23 @@ takeoff:
       cuda_visible_devices: 0
       consumer_group: embedder 
 ```
+This config sets up three models across two gpus to obtain the 24GB total of VRAM needed to run these models. If you receive
+errors about going Out of Memory (OOM) or can't access a machine with enough GPUs/VRAM then consider trying smaller models, or try deploying
+the individual models one-by-one. For more information, see
+[supported models](https://docs.titanml.co/docs/Docs/launching/supported_models).
+For more information on using AWS to spin up instances with a sufficient number of GPUs and VRAM,
+see [here](https://docs.titanml.co/docs/Docs/integrations/aws). 
 
 Then, after setting up your login for takeoff (described in detail
 [here](https://docs.titanml.co/docs/Docs/launching/accessing_takeoff)),
 run the following command to set your takeoff server running.
-
-Note: you
-should have at least 24GB of VRAM to run this configuration. If you receive
-errors about going Out of Memory (OOM), try smaller models, or try deploying
-the individual models one-by-one. For more information, see
-[supported models](https://docs.titanml.co/docs/Docs/launching/supported_models).
-For more information on using AWS to spin up instances with sufficient VRAM,
-see [here](https://docs.titanml.co/docs/Docs/integrations/aws).
 
 ```bash
 docker run --gpus all \
     -p 3000:3000 \
     -p 3001:3001 \
     -v ~/.model_cache:/code/models \
-    -v ./config.yaml:/code/config.yaml \
+    -v $PWD/config.yaml:/code/config.yaml \
     tytn/takeoff-pro:0.13.2-gpu
 ```
 
