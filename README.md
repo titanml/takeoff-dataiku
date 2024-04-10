@@ -72,7 +72,7 @@ takeoff:
       device: cuda
       max_seq_length: 512
       consumer_group: generator
-      cuda_visible_devices: 0
+      cuda_visible_devices: 1
       max_batch_size: 4
     reader3:
       model_name: "BAAI/bge-small-en"
@@ -80,7 +80,7 @@ takeoff:
       cuda_visible_devices: 0
       consumer_group: embedder 
 ```
-This config sets up three models across two gpus to obtain the 24GB total of VRAM needed to run these models. If you receive
+This config sets up three models across two gpus (CUDA devices 0 and 1) to obtain the 24GB total of VRAM needed to run these models. If you receive
 errors about going Out of Memory (OOM) or can't access a machine with enough GPUs/VRAM then consider trying smaller models, or try deploying
 the individual models one-by-one. For more information, see
 [supported models](https://docs.titanml.co/docs/Docs/launching/supported_models).
