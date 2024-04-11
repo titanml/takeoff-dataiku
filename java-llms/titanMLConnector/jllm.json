@@ -1,0 +1,23 @@
+{
+  "id": "titan-ml-connector",
+  "meta": {
+    "label": "TitanML Takeoff Server Connector"
+  },
+  "params": [
+    {
+      "name": "endpoint_url",
+      "label": "Endpoint URL",
+      "type": "STRING",
+      "description": "E.g. http://localhost:3000",
+      "mandatory": true
+    },
+    {
+      "name": "consumer_group",
+      "label": "Consumer Group",
+      "type": "STRING",
+      "description": "The consumer group to send requests to. The default for deployed TitanML models is 'primary', but if you have multiple models on the same server you must assign each to a consumer group. Leave empty to set the default value of 'primary'",
+      "mandatory": true
+    }
+  ],
+  "clientClass": "com.titanml.llm.TitanMLLLMConnector"
+}

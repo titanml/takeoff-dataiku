@@ -1,0 +1,17 @@
+.journal
+*.jar
+out/
+java-build/
+java-lib/
+.mainlock
+.wlock
+.ts
+git-info.json
+.git
+version-tags.json
+*.pyc
+.coverage
+.htmlcov
+.DS_Store
+.idea
+titan-ml-connector.iml
