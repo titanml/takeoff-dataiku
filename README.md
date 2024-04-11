@@ -95,7 +95,7 @@ run the following command to set your takeoff server running.
 docker run --gpus all \
     -p 3000:3000 \
     -p 3001:3001 \
-    -v ~/.model_cache:/code/models \
+    -v ~/.takeoff_cache:/code/models \
     -v $PWD/config.yaml:/code/config.yaml \
     tytn/takeoff-pro:0.13.2-gpu
 ```
