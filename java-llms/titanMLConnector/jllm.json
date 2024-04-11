@@ -8,7 +8,7 @@
       "name": "endpoint_url",
       "label": "Endpoint URL",
       "type": "STRING",
-      "description": "Assumes ':3000/generate' endpoint. Don't include :3000/generate at the end of this URL",
+      "description": "E.g. http://localhost:3000",
       "mandatory": true
     },
     {
