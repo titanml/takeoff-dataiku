@@ -40,6 +40,8 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
+        String snowflakeToken = resolvedSettings.config.get("snowflake_token").getAsString();
+
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
         Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
             builder.setRedirectStrategy(new LaxRedirectStrategy());
@@ -47,6 +49,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
+        client.addHeader("Authorization", String.format("Snowflake Token=\"%s\"", snowflakeToken));
     }
 
     public int getMaxParallelism() {
