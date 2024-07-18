@@ -9,7 +9,6 @@ import com.dataiku.dip.llm.online.LLMClient.CompletionQuery;
 import com.dataiku.dip.llm.online.LLMClient.EmbeddingQuery;
 import com.dataiku.dip.llm.online.LLMClient.SimpleCompletionResponse;
 import com.dataiku.dip.llm.online.LLMClient.SimpleEmbeddingResponse;
-import com.dataiku.dip.llm.promptstudio.PromptStudio;
 import com.dataiku.dip.llm.promptstudio.PromptStudio.LLMStructuredRef;
 import com.dataiku.dip.llm.utils.OnlineLLMUtils;
 import com.dataiku.dip.resourceusage.ComputeResourceUsage;
@@ -40,7 +39,11 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
-        String snowflakeToken = resolvedSettings.config.get("snowflake_token").getAsString();
+        JsonElement snowflakeTokenEl = resolvedSettings.config.get("snowflake_token");
+        String snowflakeToken = null;
+        if (snowflakeTokenEl != null && !snowflakeTokenEl.isJsonNull()){
+            snowflakeToken = snowflakeTokenEl.getAsString();
+        }
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
         Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
@@ -49,7 +52,9 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
-        client.addHeader("Authorization", String.format("Snowflake Token=\"%s\"", snowflakeToken));
+        if (snowflakeToken != null){
+            client.addHeader("Authorization", String.format("Snowflake Token=\"%s\"", snowflakeToken));
+        }
     }
 
     public int getMaxParallelism() {
@@ -96,8 +101,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Read out the settings (supported are temperature, topp, topk, and
         // max new tokens (also stop tokens, but those aren't supported in
         // takeoff)).
-        PromptStudio.LLMCompletionSettings completionSettings =
-                completionQuery.settings;
 
         // Now, build the json body that we send to takeoff. Create an empty JSON object,
         // and a json array with a capacity of one for the enclosing object and the text, resp.
@@ -118,24 +121,39 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
         }
 
-        if (completionSettings.temperature != null) {
+
+
+        JsonElement jsonSchemaEl = resolvedSettings.config.get("jsonSchema");
+        if (jsonSchemaEl != null && !jsonSchemaEl.isJsonNull() && !jsonSchemaEl.getAsString().isEmpty()){
+            logger.info("JSONX:");
+            logger.info(jsonSchemaEl);
+            jsonObject.add("json_schema", jsonSchemaEl);
+        }
+
+        JsonElement regexEl = resolvedSettings.config.get("regexScheme");
+        if (regexEl != null && !regexEl.isJsonNull() && !regexEl.getAsString().isEmpty()){
+            jsonObject.add("regex_string", regexEl);
+        }
+
+
+        if (completionQuery.settings.temperature != null) {
             JsonElement temperature =
-                    new JsonPrimitive(completionSettings.temperature);
+                    new JsonPrimitive(completionQuery.settings.temperature);
             jsonObject.add("sampling_temperature", temperature);
         }
-        if (completionSettings.topP != null) {
-            JsonElement topP = new JsonPrimitive(completionSettings.topP);
+        if (completionQuery.settings.topP != null) {
+            JsonElement topP = new JsonPrimitive(completionQuery.settings.topP);
             jsonObject.add("sampling_topp", topP);
         }
-        if (completionSettings.topK != null) {
+        if (completionQuery.settings.topK != null) {
             JsonElement topK =
-                    new JsonPrimitive(completionSettings.topK);
+                    new JsonPrimitive(completionQuery.settings.topK);
             jsonObject.add("sampling_topk", topK);
 
         }
-        if (completionSettings.maxOutputTokens != null) {
+        if (completionQuery.settings.maxOutputTokens != null) {
             JsonElement maxNewTokens =
-                    new JsonPrimitive(completionSettings.maxOutputTokens);
+                    new JsonPrimitive(completionQuery.settings.maxOutputTokens);
             jsonObject.add("max_new_tokens", maxNewTokens);
         }
 

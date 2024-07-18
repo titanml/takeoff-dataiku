@@ -18,6 +18,20 @@
       "description": "The consumer group to send requests to. The default for deployed TitanML models is 'primary', but if you have multiple models on the same server you must assign each to a consumer group. Leave empty to set the default value of 'primary'",
       "mandatory": true
     },
+        {
+      "name": "jsonSchema",
+      "label": "Json Schema",
+      "type": "STRING",
+      "description": "JSON Schema to constrain every input to",
+      "mandatory": false
+    },
+        {
+      "name": "regexScheme",
+      "label": "Regex String",
+      "type": "STRING",
+      "description": "Regex string to constrain every input to.",
+      "mandatory": false
+    },
     {
       "name": "snowflake_token",
       "label": "Snowflake Token",
