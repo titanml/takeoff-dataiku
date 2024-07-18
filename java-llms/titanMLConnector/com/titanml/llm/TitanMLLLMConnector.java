@@ -16,10 +16,7 @@ import com.dataiku.dip.resourceusage.ComputeResourceUsage.LLMUsageType;
 import com.dataiku.dip.utils.DKULogger;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.HttpClientBuilder;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.LaxRedirectStrategy;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -125,9 +122,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
         JsonElement jsonSchemaEl = resolvedSettings.config.get("jsonSchema");
         if (jsonSchemaEl != null && !jsonSchemaEl.isJsonNull() && !jsonSchemaEl.getAsString().isEmpty()){
-            logger.info("JSONX:");
-            logger.info(jsonSchemaEl);
-            jsonObject.add("json_schema", jsonSchemaEl);
+            jsonObject.add("json_schema", JsonParser.parseString(jsonSchemaEl.getAsString()));
         }
 
         JsonElement regexEl = resolvedSettings.config.get("regexScheme");
