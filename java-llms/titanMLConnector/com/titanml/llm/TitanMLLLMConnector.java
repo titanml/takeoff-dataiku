@@ -28,14 +28,18 @@ public class TitanMLLLMConnector extends CustomLLMClient {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
     ResolvedSettings resolvedSettings;
     private ExternalJSONAPIClient client;
+    private ExternalJSONAPIClient tokenClient;
 
     public TitanMLLLMConnector() {
     }
 
     public void init(ResolvedSettings settings) {
+        logger.info("Initializing TitanMLLLMConnector-----------------------------------");
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
+        String snowflakeAccountURL = resolvedSettings.config.get("snowflakeAccountUrl").getAsString();
+
 
         JsonElement snowflakeTokenEl = resolvedSettings.config.get("oauth");
 
@@ -46,9 +50,43 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
-        if (snowflakeTokenEl != null && !snowflakeTokenEl.isJsonNull() && !snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").isJsonNull()){
-            client.addHeader("Authorization", get_snowflake_token(settings));
+        tokenClient = new ExternalJSONAPIClient(snowflakeAccountURL, null, true, null, customizeBuilderCallback);
+
+        logger.info("snowflakeTokenEl-----------------------------------");
+        logger.info(snowflakeTokenEl);
+        
+
+        String access_token = snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").getAsString();
+        
+        JsonObject tokenRequestBody= new JsonObject();
+        tokenRequestBody.addProperty("AUTHENTICATOR", "OAUTH");
+        tokenRequestBody.addProperty("TOKEN", access_token);
+        
+        JsonObject trData = new JsonObject();
+        trData.add("data",tokenRequestBody);
+        
+
+        logger.info("Access Token: " + access_token);
+        logger.info("Token Request Body: " + trData);
+        logger.info("Token Request Data: " + trData.get("data"));
+
+        JsonObject tokenResp=new JsonObject();
+        try {
+            tokenResp = tokenClient.postObjectToJSON("/session/v1/login-request", JsonObject.class, trData);
+        } catch (IOException e) {
+            logger.error("SPCS session token exchange failed",e);
         }
+        String sessionStr=tokenResp.get("data").getAsJsonObject().get("token").getAsString();
+        String snowflakeToken =  "Snowflake Token=\""+sessionStr+"\"";
+        
+        logger.info("Token Response: " + tokenResp);
+        logger.info("Session Token: " + sessionStr);
+        logger.info("Snowflake Token: " + snowflakeToken);
+        
+        // // Decorate header with session token
+        // llmClient = new ExternalJSONAPIClient(llmEndpointUrl, null, true, com.dataiku.dip.ApplicationConfigurator.getProxySettings(), customizeBuilderCallback);  
+        client.addHeader("Authorization", snowflakeToken);
+
     }
 
     public int getMaxParallelism() {
@@ -69,16 +107,21 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         JsonObject tokenRequestBody= new JsonObject();
         tokenRequestBody.addProperty("AUTHENTICATOR", "OAUTH");
         tokenRequestBody.addProperty("TOKEN", access_token);
+        logger.info("Access Token: " + access_token);
+
         JsonObject trData = new JsonObject();
         trData.add("data",tokenRequestBody);
+        
 
         JsonObject tokenResp=new JsonObject();
         try {
             tokenResp = tokenClient.postObjectToJSON("/session/v1/login-request", JsonObject.class, trData);
+            logger.info("Token Response: " + tokenResp);
         } catch (IOException e) {
             logger.error("SPCS session token exchange failed",e);
         }
         String sessionStr=tokenResp.get("data").getAsJsonObject().get("token").getAsString();
+        logger.info("Session Token: " + sessionStr);
         return "Snowflake Token=\""+sessionStr+"\"";
     }
 
@@ -91,21 +134,31 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         for (CompletionQuery completionQuery : completionQueries) {
             // Get the titanML json payload from the completionQuery
             JsonObject jsonObject = getGenerationJsonObject(completionQuery);
+            
+            // Log the jsonObject to see what we are sending
+            logger.info("Sending JSON object for processing: " + jsonObject.toString());
 
-            // Send the query
-            JsonObject response = client.postObjectToJSON("generate", JsonObject.class, jsonObject);
+            try {
+                // Send the query
+                JsonObject response = client.postObjectToJSON("generate", JsonObject.class, jsonObject);
 
-            // response should look like this:
-            // {"text":["Something1","Something2"]}
-            logger.info("Logging JSON response: {}" + response);
-            String generations = response.get("text").getAsString();
+                // response should look like this:
+                // {"text":["Something1","Something2"]}
+                logger.info("Received JSON response: " + response);
+                logger.info("Logging JSON response: {}" + response);
+                String generations = response.get("text").getAsString();
 
-            // And build the final result
-            SimpleCompletionResponse queryResult = new SimpleCompletionResponse();
-            queryResult.text = generations;
+                // And build the final result
+                SimpleCompletionResponse queryResult = new SimpleCompletionResponse();
+                queryResult.text = generations;
 
-            // Add it to the list of results
-            ret.add(queryResult);
+                // Add it to the list of results
+                ret.add(queryResult);
+            } catch (Exception e) {
+                // Log any exception thrown during the HTTP request or response handling
+                logger.error("Exception !!!!!!!!!!!!!!!!!", e);
+                throw new IOException("Error during communication with API", e);
+            }
         }
 
 
