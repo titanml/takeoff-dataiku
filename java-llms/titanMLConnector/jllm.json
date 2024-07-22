@@ -31,13 +31,6 @@
       "type": "STRING",
       "description": "Regex string to constrain every input to.",
       "mandatory": false
-    },
-    {
-      "name": "snowflake_token",
-      "label": "Snowflake Token",
-      "type": "STRING",
-      "description": "Auth token to send to snowflake. For example, if you usually use the header \n{'Authorization': 'Snowflake Token=\"ver:1-hint:xxxxxx\"'}, here you would enter `ver:1-hint:xxxxxx` ",
-      "mandatory": false
     }
   ],
   "clientClass": "com.titanml.llm.TitanMLLLMConnector"

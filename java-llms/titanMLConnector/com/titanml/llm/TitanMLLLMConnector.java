@@ -39,10 +39,10 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
-        JsonElement snowflakeTokenEl = resolvedSettings.config.get("snowflake_token");
+        JsonElement snowflakeTokenEl = resolvedSettings.config.get("oauth");
         String snowflakeToken = null;
-        if (snowflakeTokenEl != null && !snowflakeTokenEl.isJsonNull()){
-            snowflakeToken = snowflakeTokenEl.getAsString();
+        if (snowflakeTokenEl != null && !snowflakeTokenEl.isJsonNull() && !snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").isJsonNull()){
+            snowflakeToken = snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").getAsString();
         }
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
