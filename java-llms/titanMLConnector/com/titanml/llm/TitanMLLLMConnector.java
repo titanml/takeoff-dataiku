@@ -36,11 +36,8 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
+
         JsonElement snowflakeTokenEl = resolvedSettings.config.get("oauth");
-        String snowflakeToken = null;
-        if (snowflakeTokenEl != null && !snowflakeTokenEl.isJsonNull() && !snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").isJsonNull()){
-            snowflakeToken = snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").getAsString();
-        }
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
         Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
@@ -49,14 +46,42 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
-        if (snowflakeToken != null){
-            client.addHeader("Authorization", String.format("Snowflake Token=\"%s\"", snowflakeToken));
+        if (snowflakeTokenEl != null && !snowflakeTokenEl.isJsonNull() && !snowflakeTokenEl.getAsJsonObject().get("snowflake_oauth").isJsonNull()){
+            client.addHeader("Authorization", get_snowflake_token(settings));
         }
     }
 
     public int getMaxParallelism() {
         return 1;
     }
+
+    public String get_snowflake_token(ResolvedSettings settings) {
+        String snowflakeAccountURL = settings.config.get("snowflakeAccountUrl").getAsString();
+        String access_token = settings.config.get("oauth").getAsJsonObject().get("snowflake_oauth").getAsString();
+
+        Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
+            builder.setRedirectStrategy(new LaxRedirectStrategy());
+            HTTPBasedLLMNetworkSettings networkSettings = new HTTPBasedLLMNetworkSettings();
+            OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
+        };
+        // Begin Oauth to Session Token Dance
+        ExternalJSONAPIClient tokenClient = new ExternalJSONAPIClient(snowflakeAccountURL, null, true, com.dataiku.dip.ApplicationConfigurator.getProxySettings(), customizeBuilderCallback);
+        JsonObject tokenRequestBody= new JsonObject();
+        tokenRequestBody.addProperty("AUTHENTICATOR", "OAUTH");
+        tokenRequestBody.addProperty("TOKEN", access_token);
+        JsonObject trData = new JsonObject();
+        trData.add("data",tokenRequestBody);
+
+        JsonObject tokenResp=new JsonObject();
+        try {
+            tokenResp = tokenClient.postObjectToJSON("/session/v1/login-request", JsonObject.class, trData);
+        } catch (IOException e) {
+            logger.error("SPCS session token exchange failed",e);
+        }
+        String sessionStr=tokenResp.get("data").getAsJsonObject().get("token").getAsString();
+        return "Snowflake Token=\""+sessionStr+"\"";
+    }
+
 
     public synchronized List<SimpleCompletionResponse> completeBatch(List<CompletionQuery> completionQueries) throws IOException {
         // Build up the list of simpleCompletionResponse in this function and
