@@ -9,7 +9,7 @@
       "label": "Snowflake preset",
       "type": "PRESET",
       "parameterSetId": "oauth-credentials",
-      "mandatory": true
+      "mandatory": false
     },
     {
       "name": "endpoint_url",
