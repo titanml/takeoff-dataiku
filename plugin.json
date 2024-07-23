@@ -1,6 +1,6 @@
 {
   "id": "titan-ml-connector",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "meta": {
     "label": "TitanML Takeoff Server Connector",
     "description": "Connect to a TitanML Model deployed on the Takeoff Server.",
