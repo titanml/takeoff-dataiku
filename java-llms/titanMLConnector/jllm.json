@@ -15,7 +15,7 @@
       "name": "endpoint_url",
       "label": "Endpoint URL",
       "type": "STRING",
-      "description": "E.g. http://localhost:3000",
+      "description": "For local takeoff server, e.g. http://localhost:3000. For snowflake, use the snowflake ingress url, e.g. https://<Ingress-ID>.snowflakecomputing.app",
       "mandatory": true
     },
     {
