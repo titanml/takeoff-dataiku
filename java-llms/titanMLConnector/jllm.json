@@ -30,7 +30,7 @@
       "label": "Snowflake account url",
       "type": "STRING",
       "description": "e.g. https://ACCOUNT_ID.prod3.us-west-2.aws.snowflakecomputing.com",
-      "mandatory": true
+      "mandatory": false
     },
     {
       "name": "jsonSchema",
