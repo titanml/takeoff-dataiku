@@ -13,9 +13,9 @@
     },
     {
       "name": "endpoint_url",
-      "label": "Endpoint URL",
+      "label": "Inference Endpoint URL",
       "type": "STRING",
-      "description": "For local takeoff server, e.g. http://localhost:3000. For snowflake, use the snowflake ingress url, e.g. https://<Ingress-ID>.snowflakecomputing.app",
+      "description": "For local takeoff server, e.g. http://localhost:3000. For snowflake, use the appropriate snowflake ingress url, e.g. https://<Ingress-ID>.snowflakecomputing.app",
       "mandatory": true
     },
     {
@@ -39,12 +39,19 @@
       "description": "JSON Schema to constrain every input to",
       "mandatory": false
     },
-        {
+    {
       "name": "regexScheme",
       "label": "Regex String",
       "type": "STRING",
       "description": "Regex string to constrain every input to.",
       "mandatory": false
+    },
+    {
+      "name": "chatTemplate",
+      "label": "Use chat template",
+      "type": "BOOLEAN",
+      "description": "Whether inputs should be injected into a prompt template. Inputs should follow the message format if so",
+      "mandatory": true
     }
   ],
   "clientClass": "com.titanml.llm.TitanMLLLMConnector"

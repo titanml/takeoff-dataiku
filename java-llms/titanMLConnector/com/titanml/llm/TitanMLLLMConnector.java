@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 public class TitanMLLLMConnector extends CustomLLMClient {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
     ResolvedSettings resolvedSettings;
+    private String readerID;
     private ExternalJSONAPIClient client;
     private ExternalJSONAPIClient tokenClient;
 
@@ -38,12 +39,12 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
-        String snowflakeAccountURL = resolvedSettings.config.get("snowflakeAccountUrl").getAsString();
-        JsonObject snowflakeTokenPreset = resolvedSettings.config.get("oauth").getAsJsonObject();
+        JsonElement snowflakeAccountURL = resolvedSettings.config.get("snowflakeAccountUrl");
+        JsonElement snowflakeTokenPreset = resolvedSettings.config.get("oauth");
         String access_token = null;
 
-        if (snowflakeTokenPreset != null && !snowflakeTokenPreset.entrySet().isEmpty()) {
-            access_token = snowflakeTokenPreset.get("snowflake_oauth").getAsString();
+        if (snowflakeTokenPreset != null && !snowflakeTokenPreset.getAsJsonObject().entrySet().isEmpty()) {
+            access_token = snowflakeTokenPreset.getAsJsonObject().get("snowflake_oauth").getAsString();
         }
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
@@ -54,13 +55,49 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
 
+        String consumer_group = settings.config.get("consumer_group").getAsString();
+        if (consumer_group == null || consumer_group.isEmpty()) {
+            logger.info("No consumer group was specified");
+        } else {
+            logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
+        }
+
+        // Get the reader-id for chat template purposes, if nesc.
+        if (settings.config.get("chatTemplate").getAsBoolean()) {
+
+            try {
+                JsonObject response = client.getToJSON("status", JsonObject.class);
+                logger.info("Received JSON response: " + response);
+
+                JsonObject liveReaders = response.getAsJsonObject("live_readers");
+
+                for (String key : liveReaders.keySet()) {
+                    JsonObject reader = liveReaders.getAsJsonObject(key);
+                    JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
+                    if (consumerGroup != null) {
+                        assert consumer_group != null;
+                        if (consumer_group.equals(consumerGroup.getAsString())) {
+                            readerID = key;
+                            break;
+                        }
+                    }
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            }
+            logger.info("Found readerID for template: " + readerID);
+
+        }
+
         // check if snowflake oauth token and snowflake account url are present
-        if (access_token == null || snowflakeAccountURL.isEmpty()) {
+        if (access_token == null || snowflakeAccountURL.getAsString().isEmpty()) {
             logger.info(
                     "No snowflake oauth token or snowflake account url found in settings. This won't work for snowflake connection but will work for local takeoff");
         } else {
             logger.info("Snowflake oauth token and snowflake account url found in settings. Use snowflake connection");
-            tokenClient = new ExternalJSONAPIClient(snowflakeAccountURL, null, true, null, customizeBuilderCallback);
+            tokenClient = new ExternalJSONAPIClient(snowflakeAccountURL.getAsString(), null, true, null, customizeBuilderCallback);
             JsonObject tokenRequestBody = new JsonObject();
             tokenRequestBody.addProperty("AUTHENTICATOR", "OAUTH");
             tokenRequestBody.addProperty("TOKEN", access_token);
@@ -95,6 +132,9 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
         for (CompletionQuery completionQuery : completionQueries) {
             // Get the titanML json payload from the completionQuery
+
+            //todo - get prompt template with batched calls instead
+
             JsonObject jsonObject = getGenerationJsonObject(completionQuery);
 
             // Log the jsonObject to see what we are sending
@@ -131,9 +171,53 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // completionQuery
         // Combine all the messages we've seen so far (dataiku uses a chat
         // completion like format, so concatenate with double newlines.)
-        String completePrompt = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly)
+
+        String json_input = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly)
                 .collect(Collectors.joining("\n\n"));
-        logger.info("Prompt constructed: " + completePrompt);
+        String completePrompt;
+        if (resolvedSettings.config.get("chatTemplate").getAsBoolean()) {
+
+            JsonArray inputsArray = new JsonArray();
+            try {
+                JsonElement xElement = JsonParser.parseString(json_input);
+
+                //its very easy to mess this up client-side; you HAVE to make sure there's no final comma after the
+                // last message (i.e. it has to be bulletproof json).
+                for (JsonElement element : xElement.getAsJsonArray()) {
+                    if (element.isJsonNull()) {
+                        logger.error("Trailing comma detected in list of messages. This will prevent JSON from parsing.");
+                        throw new JsonParseException("Trailing comma");
+
+                    }
+                }
+
+                inputsArray.add(xElement);
+            } catch (JsonParseException e) {
+                logger.error("Invalid JSON was input for messages");
+                throw new RuntimeException(e);
+            }
+
+            JsonObject templatePayload = new JsonObject();
+            templatePayload.add("inputs", inputsArray);
+
+            try {
+                logger.info("Template payload: " + templatePayload);
+                JsonObject response = client.postObjectToJSON("chat_template/" + readerID,
+                        JsonObject.class, templatePayload);
+                logger.info("Logging Prompt template response: {}" + response);
+                completePrompt = response.getAsJsonObject().get("messages").getAsJsonArray().get(0).getAsString();
+                logger.info("TEMPLATED PROMPT:" + completePrompt);
+
+            }
+            catch (IOException e){
+                logger.error("Chat template endpoint failed");
+                throw new RuntimeException(e);
+            }
+
+        } else {
+            completePrompt = json_input;
+            logger.info("Prompt constructed: " + completePrompt);
+        }
 
         // Read out the settings (supported are temperature, topp, topk, and
         // max new tokens (also stop tokens, but those aren't supported in
