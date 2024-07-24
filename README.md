@@ -237,6 +237,25 @@ You can now run the final generation recipe, and get as output what the model th
 
 ![img.png](docs/img14.png)
 
+
+### Generating according to a JSON schema or Regex
+
+Dataiku requires these be set at the connection level, with the schema or regex specified input for a given connection and then applied to every inference made with that model.
+
+It's usually worth making two models, each serving as a generator but with one using the required json schema / regex and one which does not.
+
+### Chat Templates
+
+Our Dataiku plugin also supports the use of chat templates. To configure these, create a recipe with an Advanced Prompt which has a list of messages as the `User Message`, just as you would pass to the `inputs` field when using the [native chat template endpoint](../interfacing/chat_template.md).
+
+An example `User Message` would be:
+```text
+[
+    {"role":"system", "content": "You are a helpful assistant whose job is to explain sayings"},
+    {"role":"user", "content":"{{text_input_1}}"}
+]
+
+
 # Contributing
 
 ## Getting started
