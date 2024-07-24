@@ -170,17 +170,12 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Combine all the messages we've seen so far (dataiku uses a chat
         // completion like format, so concatenate with double newlines.)
 
+        String json_input = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly)
+                .collect(Collectors.joining("\n\n"));
         String completePrompt;
         if (resolvedSettings.config.get("chatTemplate").getAsBoolean()) {
 
-            String json_input = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly)
-                    .collect(Collectors.joining("\n\n"));
-
-            // Create a JsonArray and add the JsonElement to it
-
-
             JsonArray inputsArray = new JsonArray();
-            // Parse the JSON string x to a JsonElement
             try {
                 JsonElement xElement = JsonParser.parseString(json_input);
 
@@ -200,27 +195,25 @@ public class TitanMLLLMConnector extends CustomLLMClient {
                 throw new RuntimeException(e);
             }
 
-            // Create the outer JsonObject and add the JsonArray to it
             JsonObject templatePayload = new JsonObject();
             templatePayload.add("inputs", inputsArray);
 
             try {
-                logger.info("template payload: " + templatePayload);
+                logger.info("Template payload: " + templatePayload);
                 JsonObject response = client.postObjectToJSON("chat_template/" + readerID,
                         JsonObject.class, templatePayload);
                 logger.info("Logging Prompt template response: {}" + response);
                 completePrompt = response.getAsJsonObject().get("messages").getAsJsonArray().get(0).getAsString();
                 logger.info("TEMPLATED PROMPT:" + completePrompt);
 
-            } //todo catch 500s
+            }
             catch (IOException e){
                 logger.error("Chat template endpoint failed");
                 throw new RuntimeException(e);
             }
 
         } else {
-            completePrompt = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly)
-                    .collect(Collectors.joining("\n\n"));
+            completePrompt = json_input;
             logger.info("Prompt constructed: " + completePrompt);
         }
 
