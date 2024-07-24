@@ -64,28 +64,30 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
         // Get the reader-id for chat template purposes, if nesc.
         if (settings.config.get("chatTemplate").getAsBoolean()) {
-            JsonElement managementEndpoint = settings.config.get("manage_endpoint_url");
-            if (managementEndpoint == null || managementEndpoint.isJsonNull()) {
-                throw new RuntimeException("Management endpoint not defined but chatTemplate was ticked.");
-            } else {
-                try {
-                    ExternalJSONAPIClient management_client = new ExternalJSONAPIClient(managementEndpoint.getAsString(), null, true, null, customizeBuilderCallback);
 
-                    JsonObject response = management_client.getToJSON("reader_groups", JsonObject.class);
-                    logger.info("Received JSON response: " + response);
+            try {
+                JsonObject response = client.getToJSON("status", JsonObject.class);
+                logger.info("Received JSON response: " + response);
 
-                    if (response.has(consumer_group)) {
-                        JsonArray a = response.get(consumer_group).getAsJsonArray();
-                        this.readerID = a.get(0).getAsJsonObject().get("reader_id").getAsString();
-                    } else {
-                        // Field does not exist, provide a helpful error message
-                        logger.error("Error: No such consumer group: '" + consumer_group);
+                JsonObject liveReaders = response.getAsJsonObject("live_readers");
+
+                for (String key : liveReaders.keySet()) {
+                    JsonObject reader = liveReaders.getAsJsonObject(key);
+                    JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
+                    if (consumerGroup != null) {
+                        assert consumer_group != null;
+                        if (consumer_group.equals(consumerGroup.getAsString())) {
+                            readerID = key;
+                            break;
+                        }
                     }
-
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
             }
+            logger.info("Found readerID for template: " + readerID);
 
         }
 
