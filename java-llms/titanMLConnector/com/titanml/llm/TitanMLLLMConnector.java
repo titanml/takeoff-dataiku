@@ -9,7 +9,6 @@ import com.dataiku.dip.llm.online.LLMClient.CompletionQuery;
 import com.dataiku.dip.llm.online.LLMClient.EmbeddingQuery;
 import com.dataiku.dip.llm.online.LLMClient.SimpleCompletionResponse;
 import com.dataiku.dip.llm.online.LLMClient.SimpleEmbeddingResponse;
-import com.dataiku.dip.llm.promptstudio.PromptStudio;
 import com.dataiku.dip.llm.promptstudio.PromptStudio.LLMStructuredRef;
 import com.dataiku.dip.llm.utils.OnlineLLMUtils;
 import com.dataiku.dip.resourceusage.ComputeResourceUsage;
@@ -17,10 +16,7 @@ import com.dataiku.dip.resourceusage.ComputeResourceUsage.LLMUsageType;
 import com.dataiku.dip.utils.DKULogger;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.HttpClientBuilder;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.LaxRedirectStrategy;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,16 +27,25 @@ import java.util.function.Consumer;
 public class TitanMLLLMConnector extends CustomLLMClient {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
     ResolvedSettings resolvedSettings;
+    private String readerID;
     private ExternalJSONAPIClient client;
+    private ExternalJSONAPIClient tokenClient;
 
     public TitanMLLLMConnector() {
     }
 
     public void init(ResolvedSettings settings) {
+        logger.info("Initializing TitanMLLLMConnector-----------------------------------");
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
-        String snowflakeToken = resolvedSettings.config.get("snowflake_token").getAsString();
+        JsonElement snowflakeAccountURL = resolvedSettings.config.get("snowflakeAccountUrl");
+        JsonElement snowflakeTokenPreset = resolvedSettings.config.get("oauth");
+        String access_token = null;
+
+        if (snowflakeTokenPreset != null && !snowflakeTokenPreset.getAsJsonObject().entrySet().isEmpty()) {
+            access_token = snowflakeTokenPreset.getAsJsonObject().get("snowflake_oauth").getAsString();
+        }
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
         Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
@@ -49,38 +54,114 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
-        client.addHeader("Authorization", String.format("Snowflake Token=\"%s\"", snowflakeToken));
+
+        String consumer_group = settings.config.get("consumer_group").getAsString();
+        if (consumer_group == null || consumer_group.isEmpty()) {
+            logger.info("No consumer group was specified");
+        } else {
+            logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
+        }
+
+        // Get the reader-id for chat template purposes, if nesc.
+        if (settings.config.get("chatTemplate").getAsBoolean()) {
+
+            try {
+                JsonObject response = client.getToJSON("status", JsonObject.class);
+                logger.info("Received JSON response: " + response);
+
+                JsonObject liveReaders = response.getAsJsonObject("live_readers");
+
+                for (String key : liveReaders.keySet()) {
+                    JsonObject reader = liveReaders.getAsJsonObject(key);
+                    JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
+                    if (consumerGroup != null) {
+                        assert consumer_group != null;
+                        if (consumer_group.equals(consumerGroup.getAsString())) {
+                            readerID = key;
+                            break;
+                        }
+                    }
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            }
+            logger.info("Found readerID for template: " + readerID);
+
+        }
+
+        // check if snowflake oauth token and snowflake account url are present
+        if (access_token == null || snowflakeAccountURL.getAsString().isEmpty()) {
+            logger.info(
+                    "No snowflake oauth token or snowflake account url found in settings. This won't work for snowflake connection but will work for local takeoff");
+        } else {
+            logger.info("Snowflake oauth token and snowflake account url found in settings. Use snowflake connection");
+            tokenClient = new ExternalJSONAPIClient(snowflakeAccountURL.getAsString(), null, true, null, customizeBuilderCallback);
+            JsonObject tokenRequestBody = new JsonObject();
+            tokenRequestBody.addProperty("AUTHENTICATOR", "OAUTH");
+            tokenRequestBody.addProperty("TOKEN", access_token);
+
+            JsonObject trData = new JsonObject();
+            trData.add("data", tokenRequestBody);
+
+            JsonObject tokenResp = new JsonObject();
+            try {
+                tokenResp = tokenClient.postObjectToJSON("/session/v1/login-request", JsonObject.class, trData);
+            } catch (IOException e) {
+                logger.error("SPCS session token exchange failed", e);
+            }
+            String sessionStr = tokenResp.get("data").getAsJsonObject().get("token").getAsString();
+            String snowflakeToken = "Snowflake Token=\"" + sessionStr + "\"";
+
+            // Add the snowflake token to the client
+            client.addHeader("Authorization", snowflakeToken);
+        }
+
     }
 
     public int getMaxParallelism() {
         return 1;
     }
 
-    public synchronized List<SimpleCompletionResponse> completeBatch(List<CompletionQuery> completionQueries) throws IOException {
+    public synchronized List<SimpleCompletionResponse> completeBatch(List<CompletionQuery> completionQueries)
+            throws IOException {
         // Build up the list of simpleCompletionResponse in this function and
         // return
         List<SimpleCompletionResponse> ret = new ArrayList<>();
 
         for (CompletionQuery completionQuery : completionQueries) {
             // Get the titanML json payload from the completionQuery
+
+            //todo - get prompt template with batched calls instead
+
             JsonObject jsonObject = getGenerationJsonObject(completionQuery);
 
-            // Send the query
-            JsonObject response = client.postObjectToJSON("generate", JsonObject.class, jsonObject);
+            // Log the jsonObject to see what we are sending
+            logger.info("Sending JSON object for processing: " + jsonObject.toString());
 
-            // response should look like this:
-            // {"text":["Something1","Something2"]}
-            logger.info("Logging JSON response: {}" + response);
-            String generations = response.get("text").getAsString();
+            try {
+                // Send the query
+                JsonObject response = client.postObjectToJSON("generate", JsonObject.class, jsonObject);
 
-            // And build the final result
-            SimpleCompletionResponse queryResult = new SimpleCompletionResponse();
-            queryResult.text = generations;
+                // response should look like this:
+                // {"text":["Something1","Something2"]}
+                logger.info("Received JSON response: " + response);
+                logger.info("Logging JSON response: {}" + response);
+                String generations = response.get("text").getAsString();
 
-            // Add it to the list of results
-            ret.add(queryResult);
+                // And build the final result
+                SimpleCompletionResponse queryResult = new SimpleCompletionResponse();
+                queryResult.text = generations;
+
+                // Add it to the list of results
+                ret.add(queryResult);
+            } catch (Exception e) {
+                // Log any exception thrown during the HTTP request or response handling
+                logger.error("Exception !!!!!!!!!!!!!!!!!", e);
+                throw new IOException("Error during communication with API", e);
+            }
         }
-
 
         return ret;
     }
@@ -90,17 +171,62 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // completionQuery
         // Combine all the messages we've seen so far (dataiku uses a chat
         // completion like format, so concatenate with double newlines.)
-        String completePrompt = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly).collect(Collectors.joining("\n\n"));
-        logger.info("Prompt constructed: " + completePrompt);
+
+        String json_input = completionQuery.messages.stream().map(LLMClient.ChatMessage::getTextEvenIfNotTextOnly)
+                .collect(Collectors.joining("\n\n"));
+        String completePrompt;
+        if (resolvedSettings.config.get("chatTemplate").getAsBoolean()) {
+
+            JsonArray inputsArray = new JsonArray();
+            try {
+                JsonElement xElement = JsonParser.parseString(json_input);
+
+                //its very easy to mess this up client-side; you HAVE to make sure there's no final comma after the
+                // last message (i.e. it has to be bulletproof json).
+                for (JsonElement element : xElement.getAsJsonArray()) {
+                    if (element.isJsonNull()) {
+                        logger.error("Trailing comma detected in list of messages. This will prevent JSON from parsing.");
+                        throw new JsonParseException("Trailing comma");
+
+                    }
+                }
+
+                inputsArray.add(xElement);
+            } catch (JsonParseException e) {
+                logger.error("Invalid JSON was input for messages");
+                throw new RuntimeException(e);
+            }
+
+            JsonObject templatePayload = new JsonObject();
+            templatePayload.add("inputs", inputsArray);
+
+            try {
+                logger.info("Template payload: " + templatePayload);
+                JsonObject response = client.postObjectToJSON("chat_template/" + readerID,
+                        JsonObject.class, templatePayload);
+                logger.info("Logging Prompt template response: {}" + response);
+                completePrompt = response.getAsJsonObject().get("messages").getAsJsonArray().get(0).getAsString();
+                logger.info("TEMPLATED PROMPT:" + completePrompt);
+
+            }
+            catch (IOException e){
+                logger.error("Chat template endpoint failed");
+                throw new RuntimeException(e);
+            }
+
+        } else {
+            completePrompt = json_input;
+            logger.info("Prompt constructed: " + completePrompt);
+        }
 
         // Read out the settings (supported are temperature, topp, topk, and
         // max new tokens (also stop tokens, but those aren't supported in
         // takeoff)).
-        PromptStudio.LLMCompletionSettings completionSettings =
-                completionQuery.settings;
 
-        // Now, build the json body that we send to takeoff. Create an empty JSON object,
-        // and a json array with a capacity of one for the enclosing object and the text, resp.
+        // Now, build the json body that we send to takeoff. Create an empty JSON
+        // object,
+        // and a json array with a capacity of one for the enclosing object and the
+        // text, resp.
         JsonObject jsonObject = new JsonObject();
         JsonArray prompts = new JsonArray(1);
 
@@ -109,8 +235,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         prompts.add(completePrompt);
         jsonObject.add("text", prompts);
 
-        String consumerGroup =
-                resolvedSettings.config.get("consumer_group").getAsString();
+        String consumerGroup = resolvedSettings.config.get("consumer_group").getAsString();
 
         if (consumerGroup != null) {
             // Add the consumer group to the body
@@ -118,24 +243,31 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
         }
 
-        if (completionSettings.temperature != null) {
-            JsonElement temperature =
-                    new JsonPrimitive(completionSettings.temperature);
+        JsonElement jsonSchemaEl = resolvedSettings.config.get("jsonSchema");
+        if (jsonSchemaEl != null && !jsonSchemaEl.isJsonNull() && !jsonSchemaEl.getAsString().isEmpty()) {
+            jsonObject.add("json_schema", JsonParser.parseString(jsonSchemaEl.getAsString()));
+        }
+
+        JsonElement regexEl = resolvedSettings.config.get("regexScheme");
+        if (regexEl != null && !regexEl.isJsonNull() && !regexEl.getAsString().isEmpty()) {
+            jsonObject.add("regex_string", regexEl);
+        }
+
+        if (completionQuery.settings.temperature != null) {
+            JsonElement temperature = new JsonPrimitive(completionQuery.settings.temperature);
             jsonObject.add("sampling_temperature", temperature);
         }
-        if (completionSettings.topP != null) {
-            JsonElement topP = new JsonPrimitive(completionSettings.topP);
+        if (completionQuery.settings.topP != null) {
+            JsonElement topP = new JsonPrimitive(completionQuery.settings.topP);
             jsonObject.add("sampling_topp", topP);
         }
-        if (completionSettings.topK != null) {
-            JsonElement topK =
-                    new JsonPrimitive(completionSettings.topK);
+        if (completionQuery.settings.topK != null) {
+            JsonElement topK = new JsonPrimitive(completionQuery.settings.topK);
             jsonObject.add("sampling_topk", topK);
 
         }
-        if (completionSettings.maxOutputTokens != null) {
-            JsonElement maxNewTokens =
-                    new JsonPrimitive(completionSettings.maxOutputTokens);
+        if (completionQuery.settings.maxOutputTokens != null) {
+            JsonElement maxNewTokens = new JsonPrimitive(completionQuery.settings.maxOutputTokens);
             jsonObject.add("max_new_tokens", maxNewTokens);
         }
 
@@ -158,20 +290,17 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             // response should look like this:
             // {"text":["Something1","Something2"]}
             logger.info("Logging JSON response: {}" + response);
-            JsonArray result =
-                    response.get("result").getAsJsonArray();
+            JsonArray result = response.get("result").getAsJsonArray();
 
             JsonArray vector = result.get(0).getAsJsonArray();
 
             // And build the final result
-            SimpleEmbeddingResponse queryResult =
-                    new SimpleEmbeddingResponse();
+            SimpleEmbeddingResponse queryResult = new SimpleEmbeddingResponse();
 
             queryResult.embedding = convertJsonArrayToDoubleArray(vector);
             // Add it to the list of results
             ret.add(queryResult);
         }
-
 
         return ret;
     }
@@ -197,8 +326,9 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Read out the embeddings text, wrap it in TitanML JSON
         String embeddingsText = embeddingQuery.text;
 
-        // Now, build the json body that we send to takeoff. Create an empty JSON object,
-        // and a json array with a capacity of one for the enclosing  and the text, resp.
+        // Now, build the json body that we send to takeoff. Create an empty JSON
+        // object,
+        // and a json array with a capacity of one for the enclosing and the text, resp.
         JsonObject jsonObject = new JsonObject();
         JsonArray prompts = new JsonArray(1);
 
@@ -208,8 +338,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         jsonObject.add("text", prompts);
 
         // Get the consumer group from the connection settings
-        String consumerGroup =
-                resolvedSettings.config.get("consumer_group").getAsString();
+        String consumerGroup = resolvedSettings.config.get("consumer_group").getAsString();
 
         if (consumerGroup != null) {
             // Add the consumer group to the body
