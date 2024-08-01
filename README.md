@@ -254,7 +254,7 @@ An example `User Message` would be:
     {"role":"system", "content": "You are a helpful assistant whose job is to explain sayings"},
     {"role":"user", "content":"{{text_input_1}}"}
 ]
-
+```
 
 # Contributing
 
