@@ -8,25 +8,6 @@ The Takeoff Dataiku Plugin allows you to interaface with TitanML Takeoff via dat
 > Tutorials and guidance on how to use the plugin can be found [here](https://docs.titanml.co/docs/Docs/integrations/dataiku), or you can see a video demo of the plugin in action [here](https://www.loom.com/share/9c24d2ed5ce94165b76834a068fafd66?sid=de7762cc-229e-4aa8-ad54-28476cb009ab).
 
 
-
-### Generating according to a JSON schema or Regex
-
-Dataiku requires these be set at the connection level, with the schema or regex specified input for a given connection and then applied to every inference made with that model.
-
-It's usually worth making two models, each serving as a generator but with one using the required json schema / regex and one which does not.
-
-### Chat Templates
-
-Our Dataiku plugin also supports the use of chat templates. To configure these, create a recipe with an Advanced Prompt which has a list of messages as the `User Message`, just as you would pass to the `inputs` field when using the [native chat template endpoint](https://docs.titanml.co/docs/Docs/interfacing/chat_template).
-
-An example `User Message` would be:
-```text
-[
-    {"role":"system", "content": "You are a helpful assistant whose job is to explain sayings"},
-    {"role":"user", "content":"{{text_input_1}}"}
-]
-```
-
 # Contributing
 
 ## Getting started
