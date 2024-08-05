@@ -8,6 +8,7 @@
     "icon": "icon-rocket",
     "tags": ["Connector", "Machine Learning", "NLP", "Computer Vision"],
     "url": "https://docs.titanml.co/docs/Docs/integrations/dataiku",
-    "licenseInfo": "Apache Software License"
+    "licenseInfo": "Apache Software License",
+    "supportLevel": "PARTNER_SUPPORTED"
   }
 }

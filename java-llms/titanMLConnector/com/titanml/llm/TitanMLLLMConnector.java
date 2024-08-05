@@ -146,7 +146,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
                 // response should look like this:
                 // {"text":["Something1","Something2"]}
-                logger.info("Received JSON response: " + response);
                 logger.info("Logging JSON response: {}" + response);
                 String generations = response.get("text").getAsString();
 
@@ -158,7 +157,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
                 ret.add(queryResult);
             } catch (Exception e) {
                 // Log any exception thrown during the HTTP request or response handling
-                logger.error("Exception !!!!!!!!!!!!!!!!!", e);
                 throw new IOException("Error during communication with API", e);
             }
         }
