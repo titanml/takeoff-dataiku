@@ -4,7 +4,7 @@
   "meta": {
     "label": "TitanML Takeoff Server Connector",
     "description": "Connect to a TitanML Model deployed on the Takeoff Server.",
-    "author": "Amanda Milberg",
+    "author": "Amanda Milberg & Joshua Cowan",
     "icon": "icon-rocket",
     "tags": ["Connector", "Machine Learning", "NLP", "Computer Vision"],
     "url": "https://docs.titanml.co/docs/Docs/integrations/dataiku",
