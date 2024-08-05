@@ -2,7 +2,7 @@
 
 # Takeoff Dataiku Plugin
 
-The Takeoff Dataiku Plugin allows you to interaface with TitanML Takeoff via dataiku DSS. This plugin is available from dataiku's [plugin store](https://www.dataiku.com/product/plugins/?filter%5Bplugins-topic%5D=nlp) for versions of DSS >= 12.6.x. Version 12.5.x is supported on request, or you can build the plugin using the instructions below; an example build for 12.5.2 is provided [here](./docs/12.5.2-dss-plugin-titan-ml-connector-1.1.0.zip). This repo contains the plugin's source code, along with contribution information.
+The Takeoff Dataiku Plugin allows you to interaface with TitanML Takeoff via dataiku DSS. This plugin is available from dataiku's [plugin store](https://www.dataiku.com/product/plugins/titan-ml-connector/) for versions of DSS >= 12.6.x. Version 12.5.x is supported on request, or you can build the plugin using the instructions below; an example build for 12.5.2 is provided [here](./docs/12.5.2-dss-plugin-titan-ml-connector-1.1.0.zip). This repo contains the plugin's source code, along with contribution information.
 
 > [!IMPORTANT]
 > Tutorials and guidance on how to use the plugin can be found [here](https://docs.titanml.co/docs/Docs/integrations/dataiku), or you can see a video demo of the plugin in action [here](https://www.loom.com/share/9c24d2ed5ce94165b76834a068fafd66?sid=de7762cc-229e-4aa8-ad54-28476cb009ab).
