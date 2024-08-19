@@ -8,6 +8,6 @@ build-plugin:
 zip-plugin:
 	@rm -rf dist
 	@mkdir dist
-	@zip -r dist/dss-plugin-${PLUGIN_ID}-${PLUGIN_VERSION}.zip plugin.json java-lib java-llms
+	@zip -r dist/dss-plugin-${PLUGIN_ID}-${PLUGIN_VERSION}.zip plugin.json java-lib java-llms parameter-sets
 
 plugin: build-plugin zip-plugin
