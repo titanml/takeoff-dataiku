@@ -24,6 +24,7 @@
             <compilerarg value="-Xlint:all" />
             <src>
                 <pathelement location="java-llms/titanMLConnector" />
+                <pathelement location="java-llms/titanMLSnowflakeConnector" />
             </src>
         </javac>
 

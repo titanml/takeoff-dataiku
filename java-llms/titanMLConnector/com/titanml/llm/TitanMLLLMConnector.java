@@ -29,9 +29,12 @@ public class TitanMLLLMConnector extends CustomLLMClient {
     ResolvedSettings resolvedSettings;
     private String readerID;
     private ExternalJSONAPIClient client;
-    private ExternalJSONAPIClient tokenClient;
 
     public TitanMLLLMConnector() {
+    }
+
+    public void setHeaders(String key, String value){
+        this.client.addHeader(key, value);
     }
 
     public void init(ResolvedSettings settings) {
@@ -39,13 +42,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
-        JsonElement snowflakeAccountURL = resolvedSettings.config.get("snowflakeAccountUrl");
-        JsonElement snowflakeTokenPreset = resolvedSettings.config.get("oauth");
-        String access_token = null;
 
-        if (snowflakeTokenPreset != null && !snowflakeTokenPreset.getAsJsonObject().entrySet().isEmpty()) {
-            access_token = snowflakeTokenPreset.getAsJsonObject().get("snowflake_oauth").getAsString();
-        }
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
         Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
@@ -55,9 +52,14 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
 
-        String consumer_group = settings.config.get("consumer_group").getAsString();
+        String consumer_group = null;
+        if (settings.config.get("consumer_group") != null) {
+            consumer_group = settings.config.get("consumer_group").getAsString();
+        }
+
         if (consumer_group == null || consumer_group.isEmpty()) {
             logger.info("No consumer group was specified");
+            consumer_group = "primary";
         } else {
             logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
         }
@@ -75,7 +77,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
                     JsonObject reader = liveReaders.getAsJsonObject(key);
                     JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
                     if (consumerGroup != null) {
-                        assert consumer_group != null;
                         if (consumer_group.equals(consumerGroup.getAsString())) {
                             readerID = key;
                             break;
@@ -89,33 +90,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             }
             logger.info("Found readerID for template: " + readerID);
 
-        }
-
-        // check if snowflake oauth token and snowflake account url are present
-        if (access_token == null || snowflakeAccountURL.getAsString().isEmpty()) {
-            logger.info(
-                    "No snowflake oauth token or snowflake account url found in settings. This won't work for snowflake connection but will work for local takeoff");
-        } else {
-            logger.info("Snowflake oauth token and snowflake account url found in settings. Use snowflake connection");
-            tokenClient = new ExternalJSONAPIClient(snowflakeAccountURL.getAsString(), null, true, null, customizeBuilderCallback);
-            JsonObject tokenRequestBody = new JsonObject();
-            tokenRequestBody.addProperty("AUTHENTICATOR", "OAUTH");
-            tokenRequestBody.addProperty("TOKEN", access_token);
-
-            JsonObject trData = new JsonObject();
-            trData.add("data", tokenRequestBody);
-
-            JsonObject tokenResp = new JsonObject();
-            try {
-                tokenResp = tokenClient.postObjectToJSON("/session/v1/login-request", JsonObject.class, trData);
-            } catch (IOException e) {
-                logger.error("SPCS session token exchange failed", e);
-            }
-            String sessionStr = tokenResp.get("data").getAsJsonObject().get("token").getAsString();
-            String snowflakeToken = "Snowflake Token=\"" + sessionStr + "\"";
-
-            // Add the snowflake token to the client
-            client.addHeader("Authorization", snowflakeToken);
         }
 
     }
@@ -233,13 +207,21 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         prompts.add(completePrompt);
         jsonObject.add("text", prompts);
 
-        String consumerGroup = resolvedSettings.config.get("consumer_group").getAsString();
 
-        if (consumerGroup != null) {
-            // Add the consumer group to the body
-            jsonObject.add("consumer_group", new JsonPrimitive(consumerGroup));
 
+        String consumer_group = null;
+        if (resolvedSettings.config.get("consumer_group") != null) {
+            consumer_group = resolvedSettings.config.get("consumer_group").getAsString();
         }
+
+        if (consumer_group == null || consumer_group.isEmpty()) {
+            logger.info("No consumer group was specified");
+            consumer_group = "primary";
+        }
+
+
+        jsonObject.add("consumer_group", new JsonPrimitive(consumer_group));
+
 
         JsonElement jsonSchemaEl = resolvedSettings.config.get("jsonSchema");
         if (jsonSchemaEl != null && !jsonSchemaEl.isJsonNull() && !jsonSchemaEl.getAsString().isEmpty()) {
@@ -335,13 +317,17 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         prompts.add(prompt);
         jsonObject.add("text", prompts);
 
-        // Get the consumer group from the connection settings
-        String consumerGroup = resolvedSettings.config.get("consumer_group").getAsString();
 
-        if (consumerGroup != null) {
-            // Add the consumer group to the body
-            jsonObject.add("consumer_group", new JsonPrimitive(consumerGroup));
+        String consumer_group = null;
+        if (resolvedSettings.config.get("consumer_group") != null) {
+            consumer_group = resolvedSettings.config.get("consumer_group").getAsString();
         }
+
+        if (consumer_group == null || consumer_group.isEmpty()) {
+            logger.info("No consumer group was specified");
+            consumer_group = "primary";
+        }
+        jsonObject.add("consumer_group", new JsonPrimitive(consumer_group));
 
         return jsonObject;
     }
