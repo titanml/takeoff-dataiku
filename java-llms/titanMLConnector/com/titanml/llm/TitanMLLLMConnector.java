@@ -29,7 +29,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
     ResolvedSettings resolvedSettings;
     private String readerID;
     private ExternalJSONAPIClient client;
-    private ExternalJSONAPIClient tokenClient;
 
     public TitanMLLLMConnector() {
     }
@@ -43,7 +42,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
         this.resolvedSettings = settings;
         String endpointUrl = resolvedSettings.config.get("endpoint_url").getAsString();
-        String access_token = null;
 
 
         // Create a Dataiku ExternalJSONAPI client to call takeoff with
@@ -54,9 +52,14 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
 
-        String consumer_group = settings.config.get("consumer_group").getAsString();
+        String consumer_group = null;
+        if (settings.config.get("consumer_group") != null) {
+            consumer_group = settings.config.get("consumer_group").getAsString();
+        }
+
         if (consumer_group == null || consumer_group.isEmpty()) {
             logger.info("No consumer group was specified");
+            consumer_group = "primary";
         } else {
             logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
         }
@@ -74,7 +77,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
                     JsonObject reader = liveReaders.getAsJsonObject(key);
                     JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
                     if (consumerGroup != null) {
-                        assert consumer_group != null;
                         if (consumer_group.equals(consumerGroup.getAsString())) {
                             readerID = key;
                             break;
@@ -205,13 +207,21 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         prompts.add(completePrompt);
         jsonObject.add("text", prompts);
 
-        String consumerGroup = resolvedSettings.config.get("consumer_group").getAsString();
 
-        if (consumerGroup != null) {
-            // Add the consumer group to the body
-            jsonObject.add("consumer_group", new JsonPrimitive(consumerGroup));
 
+        String consumer_group = null;
+        if (resolvedSettings.config.get("consumer_group") != null) {
+            consumer_group = resolvedSettings.config.get("consumer_group").getAsString();
         }
+
+        if (consumer_group == null || consumer_group.isEmpty()) {
+            logger.info("No consumer group was specified");
+            consumer_group = "primary";
+        }
+
+
+        jsonObject.add("consumer_group", new JsonPrimitive(consumer_group));
+
 
         JsonElement jsonSchemaEl = resolvedSettings.config.get("jsonSchema");
         if (jsonSchemaEl != null && !jsonSchemaEl.isJsonNull() && !jsonSchemaEl.getAsString().isEmpty()) {
@@ -307,13 +317,17 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         prompts.add(prompt);
         jsonObject.add("text", prompts);
 
-        // Get the consumer group from the connection settings
-        String consumerGroup = resolvedSettings.config.get("consumer_group").getAsString();
 
-        if (consumerGroup != null) {
-            // Add the consumer group to the body
-            jsonObject.add("consumer_group", new JsonPrimitive(consumerGroup));
+        String consumer_group = null;
+        if (resolvedSettings.config.get("consumer_group") != null) {
+            consumer_group = resolvedSettings.config.get("consumer_group").getAsString();
         }
+
+        if (consumer_group == null || consumer_group.isEmpty()) {
+            logger.info("No consumer group was specified");
+            consumer_group = "primary";
+        }
+        jsonObject.add("consumer_group", new JsonPrimitive(consumer_group));
 
         return jsonObject;
     }

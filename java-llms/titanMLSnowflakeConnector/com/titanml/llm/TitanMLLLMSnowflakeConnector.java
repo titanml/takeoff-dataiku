@@ -15,7 +15,6 @@ import java.util.function.Consumer;
 public class TitanMLLLMSnowflakeConnector extends TitanMLLLMConnector {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
     ResolvedSettings resolvedSettings;
-    private String readerID;
 
     public TitanMLLLMSnowflakeConnector() {
 
