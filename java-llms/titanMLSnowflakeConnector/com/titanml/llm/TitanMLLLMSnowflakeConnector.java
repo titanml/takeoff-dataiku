@@ -14,7 +14,6 @@ import java.util.function.Consumer;
 
 public class TitanMLLLMSnowflakeConnector extends TitanMLLLMConnector {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
-    ResolvedSettings resolvedSettings;
 
     public TitanMLLLMSnowflakeConnector() {
 
@@ -24,8 +23,8 @@ public class TitanMLLLMSnowflakeConnector extends TitanMLLLMConnector {
         super.init(settings);
         logger.info("Adding snowflake functionality-----------------------------------");
         // Initialize the TitanMLLLMConnector. Takes a ResolvedSettings object.
-        JsonElement snowflakeAccountURL = resolvedSettings.config.get("snowflakeAccountUrl");
-        JsonElement snowflakeTokenPreset = resolvedSettings.config.get("oauth");
+        JsonElement snowflakeAccountURL = settings.config.get("snowflakeAccountUrl");
+        JsonElement snowflakeTokenPreset = settings.config.get("oauth");
         String access_token = null;
 
         Consumer<HttpClientBuilder> customizeBuilderCallback = (builder) -> {
