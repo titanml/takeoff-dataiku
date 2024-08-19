@@ -54,5 +54,5 @@
       "mandatory": true
     }
   ],
-  "clientClass": "com.titanml.llm_snowflake.TitanMLLLMSnowflakeConnector"
+  "clientClass": "com.titanml.llm.TitanMLLLMSnowflakeConnector"
 }

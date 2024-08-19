@@ -1,4 +1,4 @@
-package com.titanml.llm_snowflake;
+package com.titanml.llm;
 
 import com.dataiku.common.rpc.ExternalJSONAPIClient;
 import com.dataiku.dip.connections.AbstractLLMConnection;
@@ -8,7 +8,6 @@ import com.dataiku.dip.utils.DKULogger;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.HttpClientBuilder;
 import com.dataiku.dss.shadelib.org.apache.http.impl.client.LaxRedirectStrategy;
 import com.google.gson.*;
-import com.titanml.llm.TitanMLLLMConnector;
 
 import java.io.IOException;
 import java.util.function.Consumer;
