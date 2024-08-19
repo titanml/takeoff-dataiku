@@ -1,9 +1,16 @@
 {
-  "id": "titan-ml-connector",
+  "id": "titan-ml-snowflake-connector",
   "meta": {
-    "label": "TitanML Takeoff Server Connector"
+    "label": "TitanML Takeoff Server Connector with Snowflake Integration"
   },
   "params": [
+    {
+      "name": "oauth",
+      "label": "Snowflake preset",
+      "type": "PRESET",
+      "parameterSetId": "oauth-credentials",
+      "mandatory": false
+    },
     {
       "name": "endpoint_url",
       "label": "Inference Endpoint URL",
@@ -17,6 +24,13 @@
       "type": "STRING",
       "description": "The consumer group to send requests to. The default for deployed TitanML models is 'primary', but if you have multiple models on the same server you must assign each to a consumer group. Leave empty to set the default value of 'primary'",
       "mandatory": true
+    },
+    {
+      "name": "snowflakeAccountUrl",
+      "label": "Snowflake account url",
+      "type": "STRING",
+      "description": "e.g. https://ACCOUNT_ID.prod3.us-west-2.aws.snowflakecomputing.com",
+      "mandatory": false
     },
     {
       "name": "jsonSchema",
@@ -40,5 +54,5 @@
       "mandatory": true
     }
   ],
-  "clientClass": "com.titanml.llm.TitanMLLLMConnector"
+  "clientClass": "com.titanml.llm_snowflake.TitanMLLLMSnowflakeConnector"
 }
