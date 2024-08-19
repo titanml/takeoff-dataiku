@@ -13,16 +13,9 @@
     },
     {
       "name": "endpoint_url",
-      "label": "Inference Endpoint URL",
+      "label": "Snowflake Ingress URL",
       "type": "STRING",
-      "description": "For local takeoff server, e.g. http://localhost:3000. For snowflake, use the appropriate snowflake ingress url, e.g. https://<Ingress-ID>.snowflakecomputing.app",
-      "mandatory": true
-    },
-    {
-      "name": "consumer_group",
-      "label": "Consumer Group",
-      "type": "STRING",
-      "description": "The consumer group to send requests to. The default for deployed TitanML models is 'primary', but if you have multiple models on the same server you must assign each to a consumer group. Leave empty to set the default value of 'primary'",
+      "description": "The endpoint on which the inference server is hosted e.g. https://<Ingress-ID>.snowflakecomputing.app",
       "mandatory": true
     },
     {
@@ -31,6 +24,13 @@
       "type": "STRING",
       "description": "e.g. https://ACCOUNT_ID.prod3.us-west-2.aws.snowflakecomputing.com",
       "mandatory": false
+    },
+    {
+      "name": "consumer_group",
+      "label": "Consumer Group",
+      "type": "STRING",
+      "description": "The consumer group to send requests to. The default for deployed TitanML models is 'primary', but if you have multiple models on the same server you must assign each to a consumer group. Leave empty to set the default value of 'primary'",
+      "mandatory": true
     },
     {
       "name": "jsonSchema",

@@ -8,7 +8,7 @@
       "name": "endpoint_url",
       "label": "Inference Endpoint URL",
       "type": "STRING",
-      "description": "For local takeoff server, e.g. http://localhost:3000. For snowflake, use the appropriate snowflake ingress url, e.g. https://<Ingress-ID>.snowflakecomputing.app",
+      "description": "The endpoint on which the takeoff server is hosted e.g. http://localhost:3000.",
       "mandatory": true
     },
     {
