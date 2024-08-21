@@ -215,7 +215,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         }
 
         if (consumer_group == null || consumer_group.isEmpty()) {
-            logger.info("No consumer group was specified");
+            logger.info("No consumer group was specified, defaulting to 'primary'");
             consumer_group = "primary";
         }
 
