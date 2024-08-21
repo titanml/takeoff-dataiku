@@ -58,7 +58,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         }
 
         if (consumer_group == null || consumer_group.isEmpty()) {
-            logger.info("No consumer group was specified");
+            logger.info("No consumer group was specified, defaulting to 'primary'");
             consumer_group = "primary";
         } else {
             logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
@@ -215,7 +215,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         }
 
         if (consumer_group == null || consumer_group.isEmpty()) {
-            logger.info("No consumer group was specified");
+            logger.info("No consumer group was specified, defaulting to 'primary'");
             consumer_group = "primary";
         }
 
@@ -324,7 +324,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         }
 
         if (consumer_group == null || consumer_group.isEmpty()) {
-            logger.info("No consumer group was specified");
+            logger.info("No consumer group was specified, defaulting to 'primary'");
             consumer_group = "primary";
         }
         jsonObject.add("consumer_group", new JsonPrimitive(consumer_group));
