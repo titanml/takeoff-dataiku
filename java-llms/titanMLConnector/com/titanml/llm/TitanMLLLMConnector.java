@@ -52,6 +52,9 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
+        // Use this client to build for 12.6.2 instead.
+        //import com.dataiku.dip.ProxySettings;
+        //client = new ExternalJSONAPIClient(endpointUrl, null, true, new ProxySettings());
 
         if (settings.config.get("consumer_group") != null) {
             consumerGroup = settings.config.get("consumer_group").getAsString();
