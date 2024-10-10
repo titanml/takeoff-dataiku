@@ -86,12 +86,21 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
                 for (String key : liveReaders.keySet()) {
                     JsonObject reader = liveReaders.getAsJsonObject(key);
-                    JsonPrimitive fetchedConsumerGroup = reader.getAsJsonPrimitive("consumer_group");
-                    if (fetchedConsumerGroup != null) {
-                        JsonArray consumerGroupArray = getConsumerGroupsAsArray(fetchedConsumerGroup);
 
-                        // Iterate over the JsonArray to check if any element matches consumerGroup
-                        for (JsonElement element : consumerGroupArray) {
+                    if (reader.has("consumer_group")) {
+                        JsonPrimitive fetchedConsumerGroup = reader.getAsJsonPrimitive("consumer_group");
+                        if (consumerGroup != null) {
+                            if (consumerGroup.equals(fetchedConsumerGroup.getAsString())) {
+                                readerID = key;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Check if "consumer_groups" field exists as a JsonArray
+                    else if (reader.has("consumer_groups")) {
+                        JsonArray fetchedConsumerGroups = reader.getAsJsonArray("consumer_groups");
+                        for (JsonElement element : fetchedConsumerGroups) {
                             if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
                                 if (consumerGroup.equals(element.getAsString())) {
                                     readerID = key;
@@ -100,6 +109,10 @@ public class TitanMLLLMConnector extends CustomLLMClient {
                             }
                         }
                     }
+                    else {
+                        logger.error("Neither consumer_group nor consumer_groups field found in reader status object.");
+                    }
+
                 }
 
             } catch (IOException e) {
@@ -144,21 +157,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         return ret;
     }
 
-    private static JsonArray getConsumerGroupsAsArray(JsonPrimitive fetchedConsumerGroup) {
-        // Handle breaking changes to consumer groups in Takeoff 0.19.0 - they're now lists rather than strings.
-        // Support both for backwards compatibility.
-        JsonArray consumerGroupArray = new JsonArray();
-
-        // If fetchedConsumerGroup is a string, add it to the JsonArray
-        if (fetchedConsumerGroup.isString()) {
-            consumerGroupArray.add(fetchedConsumerGroup.getAsString());
-        }
-        // If fetchedConsumerGroup is already a JsonArray, use it as is
-        else if (fetchedConsumerGroup.isJsonArray()) {
-            consumerGroupArray = fetchedConsumerGroup.getAsJsonArray();
-        }
-        return consumerGroupArray;
-    }
 
     private JsonObject getGenerationJsonObject(CompletionQuery completionQuery) {
         // Make a TitanML compatible json POST object from a dataiku
