@@ -28,6 +28,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
     ResolvedSettings resolvedSettings;
     private String readerID;
+    private String consumerGroup;
     private ExternalJSONAPIClient client;
 
     public TitanMLLLMConnector() {
@@ -52,20 +53,30 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
 
-        String consumer_group = null;
         if (settings.config.get("consumer_group") != null) {
-            consumer_group = settings.config.get("consumer_group").getAsString();
+            consumerGroup = settings.config.get("consumer_group").getAsString();
         }
 
-        if (consumer_group == null || consumer_group.isEmpty()) {
+        if (consumerGroup == null || consumerGroup.isEmpty()) {
             logger.info("No consumer group was specified, defaulting to 'primary'");
-            consumer_group = "primary";
-        } else {
-            logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
+            consumerGroup = "primary";
         }
+
+    }
+
+    public int getMaxParallelism() {
+        return 1;
+    }
+
+    public synchronized List<SimpleCompletionResponse> completeBatch(List<CompletionQuery> completionQueries)
+            throws IOException {
+        // Build up the list of simpleCompletionResponse in this function and
+        // return
+        List<SimpleCompletionResponse> ret = new ArrayList<>();
+
 
         // Get the reader-id for chat template purposes, if nesc.
-        if (settings.config.get("chatTemplate").getAsBoolean()) {
+        if (resolvedSettings.config.get("chatTemplate").getAsBoolean()) {
 
             try {
                 JsonObject response = client.getToJSON("status", JsonObject.class);
@@ -91,18 +102,6 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             logger.info("Found readerID for template: " + readerID);
 
         }
-
-    }
-
-    public int getMaxParallelism() {
-        return 1;
-    }
-
-    public synchronized List<SimpleCompletionResponse> completeBatch(List<CompletionQuery> completionQueries)
-            throws IOException {
-        // Build up the list of simpleCompletionResponse in this function and
-        // return
-        List<SimpleCompletionResponse> ret = new ArrayList<>();
 
         for (CompletionQuery completionQuery : completionQueries) {
             // Get the titanML json payload from the completionQuery
