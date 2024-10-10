@@ -86,11 +86,18 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
                 for (String key : liveReaders.keySet()) {
                     JsonObject reader = liveReaders.getAsJsonObject(key);
-                    JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
-                    if (consumerGroup != null) {
-                        if (consumer_group.equals(consumerGroup.getAsString())) {
-                            readerID = key;
-                            break;
+                    JsonPrimitive fetchedConsumerGroup = reader.getAsJsonPrimitive("consumer_group");
+                    if (fetchedConsumerGroup != null) {
+                        JsonArray consumerGroupArray = getConsumerGroupsAsArray(fetchedConsumerGroup);
+
+                        // Iterate over the JsonArray to check if any element matches consumerGroup
+                        for (JsonElement element : consumerGroupArray) {
+                            if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+                                if (consumerGroup.equals(element.getAsString())) {
+                                    readerID = key;
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
@@ -135,6 +142,22 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         }
 
         return ret;
+    }
+
+    private static JsonArray getConsumerGroupsAsArray(JsonPrimitive fetchedConsumerGroup) {
+        // Handle breaking changes to consumer groups in Takeoff 0.19.0 - they're now lists rather than strings.
+        // Support both for backwards compatibility.
+        JsonArray consumerGroupArray = new JsonArray();
+
+        // If fetchedConsumerGroup is a string, add it to the JsonArray
+        if (fetchedConsumerGroup.isString()) {
+            consumerGroupArray.add(fetchedConsumerGroup.getAsString());
+        }
+        // If fetchedConsumerGroup is already a JsonArray, use it as is
+        else if (fetchedConsumerGroup.isJsonArray()) {
+            consumerGroupArray = fetchedConsumerGroup.getAsJsonArray();
+        }
+        return consumerGroupArray;
     }
 
     private JsonObject getGenerationJsonObject(CompletionQuery completionQuery) {
