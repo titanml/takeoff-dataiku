@@ -28,6 +28,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
     final private static DKULogger logger = DKULogger.getLogger("dku.llm.titanml");
     ResolvedSettings resolvedSettings;
     private String readerID;
+    private String consumerGroup;
     private ExternalJSONAPIClient client;
 
     public TitanMLLLMConnector() {
@@ -51,45 +52,17 @@ public class TitanMLLLMConnector extends CustomLLMClient {
             OnlineLLMUtils.add429RetryStrategy(builder, networkSettings);
         };
         client = new ExternalJSONAPIClient(endpointUrl, null, true, null, customizeBuilderCallback);
+        // Use this client to build for 12.6.2 instead.
+        //import com.dataiku.dip.ProxySettings;
+        //client = new ExternalJSONAPIClient(endpointUrl, null, true, new ProxySettings());
 
-        String consumer_group = null;
         if (settings.config.get("consumer_group") != null) {
-            consumer_group = settings.config.get("consumer_group").getAsString();
+            consumerGroup = settings.config.get("consumer_group").getAsString();
         }
 
-        if (consumer_group == null || consumer_group.isEmpty()) {
+        if (consumerGroup == null || consumerGroup.isEmpty()) {
             logger.info("No consumer group was specified, defaulting to 'primary'");
-            consumer_group = "primary";
-        } else {
-            logger.info(String.format("Retrieving example readerID for consumer_group %s ", consumer_group));
-        }
-
-        // Get the reader-id for chat template purposes, if nesc.
-        if (settings.config.get("chatTemplate").getAsBoolean()) {
-
-            try {
-                JsonObject response = client.getToJSON("status", JsonObject.class);
-                logger.info("Received JSON response: " + response);
-
-                JsonObject liveReaders = response.getAsJsonObject("live_readers");
-
-                for (String key : liveReaders.keySet()) {
-                    JsonObject reader = liveReaders.getAsJsonObject(key);
-                    JsonPrimitive consumerGroup = reader.getAsJsonPrimitive("consumer_group");
-                    if (consumerGroup != null) {
-                        if (consumer_group.equals(consumerGroup.getAsString())) {
-                            readerID = key;
-                            break;
-                        }
-                    }
-                }
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-
-            }
-            logger.info("Found readerID for template: " + readerID);
-
+            consumerGroup = "primary";
         }
 
     }
@@ -103,6 +76,55 @@ public class TitanMLLLMConnector extends CustomLLMClient {
         // Build up the list of simpleCompletionResponse in this function and
         // return
         List<SimpleCompletionResponse> ret = new ArrayList<>();
+
+
+        // Get the reader-id for chat template purposes, if nesc.
+        if (resolvedSettings.config.get("chatTemplate").getAsBoolean()) {
+
+            try {
+                JsonObject response = client.getToJSON("status", JsonObject.class);
+                logger.info("Received JSON response: " + response);
+
+                JsonObject liveReaders = response.getAsJsonObject("live_readers");
+
+                for (String key : liveReaders.keySet()) {
+                    JsonObject reader = liveReaders.getAsJsonObject(key);
+
+                    if (reader.has("consumer_group")) {
+                        JsonPrimitive fetchedConsumerGroup = reader.getAsJsonPrimitive("consumer_group");
+                        if (consumerGroup != null) {
+                            if (consumerGroup.equals(fetchedConsumerGroup.getAsString())) {
+                                readerID = key;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Check if "consumer_groups" field exists as a JsonArray
+                    else if (reader.has("consumer_groups")) {
+                        JsonArray fetchedConsumerGroups = reader.getAsJsonArray("consumer_groups");
+                        for (JsonElement element : fetchedConsumerGroups) {
+                            if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+                                if (consumerGroup.equals(element.getAsString())) {
+                                    readerID = key;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        logger.error("Neither consumer_group nor consumer_groups field found in reader status object.");
+                    }
+
+                }
+
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+
+            }
+            logger.info("Found readerID for template: " + readerID);
+
+        }
 
         for (CompletionQuery completionQuery : completionQueries) {
             // Get the titanML json payload from the completionQuery
@@ -137,6 +159,7 @@ public class TitanMLLLMConnector extends CustomLLMClient {
 
         return ret;
     }
+
 
     private JsonObject getGenerationJsonObject(CompletionQuery completionQuery) {
         // Make a TitanML compatible json POST object from a dataiku
